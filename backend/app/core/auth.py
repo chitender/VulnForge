@@ -1,7 +1,7 @@
-from functools import lru_cache
 from typing import Annotated
 
 import httpx
+from cachetools import TTLCache, cached
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -10,8 +10,10 @@ from app.core.config import settings
 
 bearer_scheme = HTTPBearer()
 
+_jwks_cache: TTLCache = TTLCache(maxsize=1, ttl=300)  # 5-minute TTL
 
-@lru_cache(maxsize=1)
+
+@cached(cache=_jwks_cache)
 def _get_jwks() -> dict:
     url = (
         f"{settings.KEYCLOAK_URL}/realms/{settings.KEYCLOAK_REALM}"
@@ -31,10 +33,10 @@ def _decode_token(token: str) -> dict:
             algorithms=["RS256"],
             audience=settings.KEYCLOAK_CLIENT_ID,
         )
-    except JWTError as exc:
+    except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {exc}",
+            detail="Invalid or expired token",
         )
 
 

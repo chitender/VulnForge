@@ -60,7 +60,7 @@ def client_with_mock_jwks():
         ]
     }
 
-    auth_module._get_jwks.cache_clear()
+    auth_module._jwks_cache.clear()
     with patch.object(auth_module, "_get_jwks", return_value=fake_jwks):
         with TestClient(app, raise_server_exceptions=True) as c:
             yield c, private_key
