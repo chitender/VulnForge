@@ -64,7 +64,7 @@ VulnForge/
 |---|---|---|
 | `postgres` | postgres:16-alpine | Primary database |
 | `redis` | redis:7-alpine | Celery broker + result backend |
-| `trivy-server` | aquasec/trivy:latest | Vuln DB server, HTTP API on :4954 |
+| `trivy-server` | aquasec/trivy:latest | Vuln DB server (HPA 2–N replicas), per-pod DB via initContainer+emptyDir |
 | `backend` | ghcr.io/org/patchpilot-backend | FastAPI on :8000 |
 | `worker` | ghcr.io/org/patchpilot-worker | Celery prefork (concurrency=2/pod), scaled by KEDA |
 | `keycloak` | quay.io/keycloak/keycloak:24 | OIDC identity provider |
@@ -77,7 +77,7 @@ VulnForge/
 ### Backend
 - **Python 3.12**, FastAPI, SQLAlchemy 2.0 (async), asyncpg, Alembic
 - **Auth:** `python-jose[cryptography]` — validates Keycloak-issued JWT Bearer tokens
-- **Secrets:** `cryptography.Fernet` — AES-128-CBC; key from `FERNET_KEY` env var
+- **Secrets:** envelope encryption — per-record DEK (Fernet) wrapped by KEK (`MASTER_KEY` env var in dev, AWS KMS / Azure Key Vault / Vault in prod). Columns: `auth_ciphertext`, `auth_dek_enc`. Built in Phase 1 schema, implemented in Phase 2; KEK provider swapped to KMS in Phase 8 as a config-only change.
 - **Jobs:** Celery 5, prefork pool, `--concurrency 2` per pod, Redis broker; KEDA autoscales pods on queue depth (max 50 pods = 100 parallel scans)
 - **Scanner:** `trivy` binary (subprocess) with `--server http://trivy-server:4954`; workers pull/decompress images, trivy-server provides DB matching only
 - **GitLab:** `python-gitlab 4.x`
@@ -213,9 +213,25 @@ User → POST /api/images/{id}/scans
           → Delete temp image layers from worker disk
 ```
 
-**trivy-server:** `trivy server --listen 0.0.0.0:4954 --cache-dir /trivy-cache`. Vuln DB on a PVC shared across the single server pod. Nightly refresh via Kubernetes CronJob: `trivy image --download-db-only --cache-dir /trivy-cache`.
+**trivy-server — HA design (fixes single-pod SPOF and RWO PVC bottleneck):**
 
-**Rate limiting:** Max 5 concurrent scans per user enforced at task dispatch (Redis `INCR` + TTL counter). Org-wide fleet cap is 100 via KEDA maxReplicas × concurrency.
+- Deployment with **HPA** (minReplicas=2, maxReplicas=N, CPU target 60%).
+- Each pod gets its own vuln DB via an **initContainer**: `trivy image --download-db-only --cache-dir /trivy-cache` on pod start, writing into an `emptyDir` volume mounted at `/trivy-cache`. The main `trivy server` container mounts the same `emptyDir`. No shared PVC needed.
+- Nightly refresh: a Kubernetes **CronJob** rolls the trivy-server Deployment (`kubectl rollout restart`) — new pods run the initContainer and pick up the latest DB on start.
+- Workers round-robin across trivy-server replicas via the Kubernetes Service. No client-side load balancing needed.
+- Helm values expose `trivyServer.replicas` (default 2) and `trivyServer.hpa.enabled` (default true).
+
+**Capacity SLO — deliberate decision required:**
+100 truly simultaneous scans = 50 pods × 2 CPUs + ephemeral disk for up to 100 concurrent image pulls (typically 0.3–2 GB each = tens to ~200 GB of disk + network). That is a large, bursty footprint for infrequent peaks.
+Chosen model: **"100 in-flight concurrently" is the stated SLO.** KEDA maxReplicas=50 enforces it. Worker pod spec must include `ephemeral-storage: requests: 4Gi / limits: 8Gi` and the existing post-scan cleanup (`delete temp image layers`) is mandatory, not optional — a single oversized pull without cleanup evicts neighbors.
+If the real need turns out to be "100 in queue, drained fast," lower maxReplicas to 10 (20 parallel) and let KEDA burn the backlog at lower steady-state cost. This is a `values.yaml` knob, not a code change.
+
+**Rate limiting:** Max 5 concurrent scans per user (Redis `INCR` + TTL counter at task dispatch). Org-wide cap enforced by KEDA maxReplicas × concurrency.
+
+**Registry pull rate limits:** 100 concurrent pulls will trip Docker Hub free-tier limits and ECR throttling.
+- In-cluster pull-through cache (Harbor or registry mirror) for Docker Hub images — workers pull from the mirror, not the upstream directly.
+- All registry adapters implement exponential backoff + jitter on HTTP 429 / throttle responses (max 5 retries, base 2s, cap 60s).
+- Per-registry concurrency cap: Redis semaphore keyed on registry ID, max 10 concurrent pulls per registry (configurable per registry type in values). Complements the per-user cap.
 
 ---
 
@@ -231,9 +247,13 @@ User → POST /api/images/{id}/scans
 - **Base Dockerfile:** same OS-package pinning approach as above.
 - `FROM` line is **not auto-modified** in v1. The MR description instead includes a note: _"Base image tag bump not automated — consider upgrading to `<image>:latest-stable` manually."_
 
-**Multi-stage Dockerfile handling:** parse all `FROM` lines; apply package pins only to the final stage's `RUN` blocks (the stage that produces the runtime image). Comment in MR description lists which stage was patched.
+**Dockerfile parsing:** use `dockerfile-parse` (Python library, wraps BuildKit's parser) — not regex or line-matching. This handles `\` continuations, heredoc `RUN` blocks, multi-stage builds, and `ARG`-substituted base references correctly. Regex line-matching breaks on all of these and produces non-building Dockerfiles, which erodes user trust faster than no automation.
+
+**Multi-stage Dockerfile handling:** parse all `FROM` lines and their aliases; apply package pins only to the final stage's `RUN` blocks (the stage that produces the runtime image). Comment in MR description lists which stage was patched.
 
 **Only** patches findings where `is_fixable=true` and `fixed_version` is not null. Never rewrites unrelated lines.
+
+**GitLab CI pipeline tracking:** after MR creation, the `merge_requests` table gains a `gitlab_pipeline_id` column (nullable). The `/api/merge-requests/{id}/sync` endpoint fetches the latest pipeline status from GitLab and stores it as `pipeline_status ENUM[PENDING,RUNNING,PASSED,FAILED,UNKNOWN]`. The MRs dashboard surfaces a pipeline badge per MR — a patch that breaks CI is visibly flagged, not silently trusted. A FAILED pipeline triggers a toast notification on the frontend polling update.
 
 Each MR description includes: CVE table (id | package | installed→fixed | severity) + link to PatchPilot scan + list of patched file paths.
 
@@ -275,7 +295,7 @@ RETURNING id, gitlab_mr_iid, source_branch;
 
 If the row already exists (conflict), the task recovers the existing `gitlab_mr_iid` and pushes a new commit to the existing source branch + updates the MR description. Atomically correct under concurrent retries.
 
-Celery task idempotency key: `task_id = sha256(gitlab_project_id + image_digest + target_branch + target_kind)` — Celery deduplication via `task_id` prevents the same task from being enqueued twice from the UI.
+**Dispatch deduplication (separate from DB idempotency):** Celery with a Redis broker does not deduplicate by `task_id` — submitting the same id twice can still enqueue two executions. The DB unique partial index + `ON CONFLICT` is the authoritative correctness guarantee. For dispatch-time dedup (preventing double-enqueue from a UI double-click), use a short-TTL Redis `SET NX` lock keyed on `sha256(gitlab_project_id + image_digest + target_branch + target_kind)` with a 30s expiry, checked before `apply_async`. The DB constraint remains the backstop regardless.
 
 ### MR creation flow (per Dockerfile target)
 1. Resolve target branch (user-supplied in drawer)
@@ -310,7 +330,7 @@ The vulnerability loop isn't closed until a post-merge scan confirms the CVEs ar
 GET  /api/me                           current user info from JWT
 
 # Registries
-POST   /api/registries                 register (creds → Fernet-encrypted)
+POST   /api/registries                 register (creds → envelope-encrypted: DEK+KEK)
 POST   /api/registries/{id}/validate   test credentials against registry
 GET    /api/registries
 DELETE /api/registries/{id}
@@ -385,10 +405,10 @@ Single umbrella chart with the following sub-deployments:
 - `backend` Deployment + Service + HPA (2–10 replicas)
 - `worker` Deployment + KEDA `ScaledObject` (minReplicas=2, maxReplicas=50, trigger: Redis queue depth ≥ 2 items/replica)
 - `frontend` Deployment + Service + Ingress
-- `trivy-server` Deployment + Service + PVC for DB cache
+- `trivy-server` Deployment + Service + HPA; per-pod DB via initContainer + emptyDir (no shared PVC)
 - `redis` StatefulSet (or managed Redis ref)
 - External: PostgreSQL and Keycloak referenced via values (not bundled)
-- ConfigMap for non-secret env, ExternalSecret CRD refs for `FERNET_KEY`, registry secrets
+- ConfigMap for non-secret env, ExternalSecret CRD refs for `MASTER_KEY` (KEK) — registry creds stored as encrypted columns in Postgres, not as K8s secrets
 - `values.yaml` (defaults), `values-staging.yaml`, `values-prod.yaml`
 
 Helm chart versioned independently from app version. Stored as GitHub Release assets + served via `gh-pages` as a Helm repo (`index.yaml`).
@@ -419,25 +439,46 @@ Helm chart versioned independently from app version. Stored as GitHub Release as
 
 | Phase | Deliverable |
 |---|---|
-| 1 | Repo scaffold, Postgres schema + Alembic, Keycloak OIDC wired, Fernet secret abstraction, Docker Compose running all services |
-| 2 | Registry CRUD API + Fernet encryption + per-type credential adapters (ECR/ACR/GAR/DockerHub/Generic) + `/validate` endpoint |
+| 1 | Repo scaffold, Postgres schema + Alembic (incl. `auth_ciphertext`/`auth_dek_enc` columns), Keycloak OIDC wired, envelope encryption abstraction (`CredentialStore` with `MASTER_KEY` KEK fallback), Docker Compose running all services |
+| 2 | Registry CRUD API + envelope encryption (DEK per record) + per-type credential adapters (ECR/ACR/GAR/DockerHub/Generic) + `/validate` endpoint |
 | 3 | Image CRUD API (Dockerfile paths, GitLab repo, service_type) |
-| 4 | Celery worker + Trivy server integration + scan trigger + findings parsing + scan status polling |
+| 4 | Celery worker + Trivy server (HA) integration + scan trigger + findings parsing + scan status polling + structlog + OTel traces + DLQ for failed scans |
 | 5 | Findings table UI (sort/filter/select) + severity donut + Image Detail screen |
-| 6 | Patch generators (base + app Dockerfile) + python-gitlab MR creation + idempotency + audit log |
+| 6 | Patch generators (dockerfile-parse, OS-package pinning) + python-gitlab MR creation + dispatch Redis SET NX dedup + DB idempotency + GitLab pipeline status tracking + audit log |
 | 7 | Raise MR drawer (template inputs, live preview, diff preview) + MRs dashboard |
-| 8 | RBAC enforcement, envelope encryption + KMS integration, DEK rotation script, structured logging + redaction, OTel traces, rate limits, Trivy DB refresh CronJob, GitLab webhook for auto-rescan, GHA CI/CD pipelines, Helm chart + KEDA |
+| 8 | RBAC full enforcement + Postgres RLS, swap KEK to real KMS (config-only), DEK rotation script, OTel full coverage + dashboards, GitLab webhook auto-rescan, registry pull-through cache, GHA CI/CD pipelines, Helm chart + KEDA + HPA for trivy-server |
 
 ---
 
-## 14. Acceptance Criteria
+## 14. Operational Decisions
+
+### Celery broker durability
+Redis as Celery broker requires `task_acks_late=True` + a sane `visibility_timeout` (set to `CELERY_TASK_TIME_LIMIT + 60s = 1020s`) so a worker crash doesn't drop in-flight scans. Idempotency (DB unique index) is the required partner to at-least-once delivery — a redelivered task must be safe to re-execute. Managed/replicated Redis (Redis Cluster or cloud-managed) in prod; single-node in dev.
+
+### Observability — moved to Phase 4
+Structured logging (structlog), OTel traces on scan tasks, and a dead-letter queue for failed scans must land **in Phase 4** alongside the scanner, not Phase 8. This is when 100-parallel behavior will be debugged. Phase 8 adds full coverage (API traces, frontend RUM, dashboards) on top of the Phase 4 foundation.
+
+Phase 4 minimum:
+- `structlog` JSON logging on workers with secret redaction filter
+- OTel trace per scan task (`scan_id` as root span, Trivy subprocess as child)
+- `scans_dlq` Redis list: failed scan task IDs + error text, surfaced in admin UI
+- Scan duration histogram metric (Prometheus scrape from worker)
+
+### Team scope + soft-delete enforcement
+`deleted_at IS NULL AND team_id = ANY(:team_ids)` must be applied as a **SQLAlchemy base query mixin** (not per-endpoint) to every model that carries `team_id`. PostgreSQL Row-Level Security (RLS) is the Phase 8 defence-in-depth layer on top. A cross-team data leak slipping through one forgotten endpoint is an S1 incident; centralised enforcement is non-negotiable.
+
+---
+
+## 15. Acceptance Criteria
 
 - ECR, ACR, and Docker Hub images register and validate successfully
 - Trivy scan of a real image returns real CVEs (no mock data)
-- 100 simultaneous scans complete without timeout or worker crash (KEDA scales worker pods, trivy-server holds DB)
+- 100 simultaneous scans complete without timeout or worker crash (KEDA scales worker pods, trivy-server HA via HPA + per-pod emptyDir DB)
 - Selecting fixable CVEs → Raise MR with user-supplied branch template → GitLab MR opens on correct branch with OS-package pins in the Dockerfile
 - Re-raising for the same image digest updates the existing MR, not a new one (enforced by unique partial index + ON CONFLICT)
 - No credential value ever appears in an API response body or application log; each credential encrypted with its own DEK
 - After an MR merges, the Image Detail screen shows "Re-scan recommended" banner
-- Helm chart deploys cleanly to a Kubernetes cluster via `helm install`; KEDA ScaledObject autoscales workers
+- A Dockerfile patch produced by the MR engine is parsed via `dockerfile-parse`, builds successfully, and does not rewrite unrelated lines
+- A failed GitLab CI pipeline on a PatchPilot MR shows a FAILED badge in the MRs dashboard within one polling cycle
+- Helm chart deploys cleanly to a Kubernetes cluster via `helm install`; KEDA ScaledObject autoscales workers; trivy-server HPA maintains ≥2 replicas
 - GHA pipeline builds all three images and publishes a Helm release on tag push
