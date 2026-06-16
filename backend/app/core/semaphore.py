@@ -22,7 +22,8 @@ class RegistrySemaphore:
     def acquire(self, registry_id: str) -> bool:
         key = self._key(registry_id)
         current = self._redis.incr(key)
-        self._redis.expire(key, _DEFAULT_TTL)
+        if current == 1:
+            self._redis.expire(key, _DEFAULT_TTL)
         if current > self._max:
             self._redis.decr(key)
             return False

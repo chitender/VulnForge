@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.credentials import CredentialStore
+from app.core.team_scope import team_scoped_query
 from app.models.registry import Registry, RegistryType
 
 
@@ -43,22 +44,15 @@ class RegistryService:
         return reg
 
     async def list(self, db: AsyncSession, team_id: str) -> list[Registry]:
-        result = await db.execute(
-            select(Registry).where(
-                Registry.team_id == uuid.UUID(team_id),
-                Registry.deleted_at.is_(None),
-            )
-        )
+        q = team_scoped_query(select(Registry), Registry, [team_id])
+        result = await db.execute(q)
         return list(result.scalars().all())
 
     async def get(self, db: AsyncSession, registry_id: str, team_id: str) -> Registry | None:
-        result = await db.execute(
-            select(Registry).where(
-                Registry.id == uuid.UUID(registry_id),
-                Registry.team_id == uuid.UUID(team_id),
-                Registry.deleted_at.is_(None),
-            )
+        q = team_scoped_query(select(Registry), Registry, [team_id]).where(
+            Registry.id == uuid.UUID(registry_id)
         )
+        result = await db.execute(q)
         return result.scalar_one_or_none()
 
     async def delete(self, db: AsyncSession, registry_id: str, team_id: str) -> bool:

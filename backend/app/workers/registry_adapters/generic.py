@@ -17,5 +17,5 @@ class GenericOCIAdapter(BaseRegistryAdapter):
         )
         if resp.status_code in (401, 403):
             raise ValueError(f"Registry credentials invalid for {registry.registry_url}")
-        if resp.status_code not in (200, 401):
+        if resp.status_code != 200:
             raise ValueError(f"Registry unreachable: {resp.status_code}")
