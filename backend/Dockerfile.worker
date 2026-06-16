@@ -1,0 +1,19 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget gpg \
+    && wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor > /usr/share/keyrings/trivy.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" > /etc/apt/sources.list.d/trivy.list \
+    && apt-get update && apt-get install -y trivy \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml .
+RUN pip install --no-cache-dir -e ".[dev]"
+
+COPY . .
+
+CMD ["celery", "-A", "app.core.celery_app.celery_app", "worker", \
+     "--pool=prefork", "--concurrency=2", \
+     "--loglevel=info", "--max-tasks-per-child=50"]
