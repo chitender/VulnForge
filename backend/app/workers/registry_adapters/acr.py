@@ -3,6 +3,7 @@ from typing import Any
 from azure.containerregistry import ContainerRegistryClient
 from azure.identity import ClientSecretCredential
 
+from app.core.url_validator import validate_registry_url
 from app.workers.registry_adapters.base import BaseRegistryAdapter
 
 
@@ -14,6 +15,7 @@ class ACRAdapter(BaseRegistryAdapter):
         }
 
     def validate(self, creds: dict[str, Any], registry: Any) -> None:
+        validate_registry_url(registry.registry_url)  # SSRF guard before outbound request
         try:
             credential = ClientSecretCredential(
                 tenant_id=creds["tenant_id"],
@@ -25,5 +27,7 @@ class ACRAdapter(BaseRegistryAdapter):
                 credential=credential,
             )
             next(client.list_repository_names(), None)
+        except ValueError:
+            raise
         except Exception as exc:
             raise ValueError(f"ACR credentials invalid: {exc}") from exc

@@ -1,5 +1,6 @@
 from typing import Any
 
+from app.core.url_validator import validate_registry_url
 from app.workers.registry_adapters.base import BaseRegistryAdapter
 
 
@@ -11,9 +12,10 @@ class GenericOCIAdapter(BaseRegistryAdapter):
         }
 
     def validate(self, creds: dict[str, Any], registry: Any) -> None:
+        validate_registry_url(registry.registry_url)  # SSRF guard before outbound request
         url = f"https://{registry.registry_url}/v2/"
         resp = self._request_with_backoff(
-            "GET", url, auth=(creds["username"], creds["password"])
+            "GET", url, allow_redirects=False, auth=(creds["username"], creds["password"])
         )
         if resp.status_code in (401, 403):
             raise ValueError(f"Registry credentials invalid for {registry.registry_url}")
