@@ -1,6 +1,13 @@
 import { useAuth } from 'react-oidc-context'
 import { useEffect } from 'react'
-import { setAuthToken, clearAuthToken } from './lib/api'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { clearAuthToken, setAuthToken } from './lib/api'
+import { AppLayout } from './components/layout/AppLayout'
+import { ImagesPage } from './pages/ImagesPage'
+import { ImageDetailPage } from './pages/ImageDetailPage'
+import { MergeRequestsPage } from './pages/MergeRequestsPage'
+import { RegistriesPage } from './pages/RegistriesPage'
+import { ScanResultsPage } from './pages/ScanResultsPage'
 
 export default function App() {
   const auth = useAuth()
@@ -36,9 +43,17 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-8">
-      <p className="text-slate-400">Signed in as {auth.user?.profile.email}</p>
-      <p className="text-green-400 mt-2">✓ Foundation complete — routing coming in Phase 5</p>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route index element={<Navigate to="/images" replace />} />
+          <Route path="/registries" element={<RegistriesPage />} />
+          <Route path="/images" element={<ImagesPage />} />
+          <Route path="/images/:id" element={<ImageDetailPage />} />
+          <Route path="/scans/:id" element={<ScanResultsPage />} />
+          <Route path="/merge-requests" element={<MergeRequestsPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   )
 }
