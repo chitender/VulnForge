@@ -82,6 +82,8 @@ class PatchGenerator:
     @staticmethod
     def _pin_package(run_value: str, pkg: str, fixed_version: str) -> tuple[str, bool]:
         """Replace `pkg` or `pkg=old` with `pkg=fixed_version` (first occurrence)."""
-        pattern = re.compile(rf"\b{re.escape(pkg)}(?:=[^\s\\]+)?")
+        # Trailing \b prevents matching pkg as a prefix of a longer package name
+        # e.g. `libssl` must not corrupt `libssl-dev`
+        pattern = re.compile(rf"\b{re.escape(pkg)}(?:=[^\s\\]+)?\b")
         new_val, n = pattern.subn(f"{pkg}={fixed_version}", run_value, count=1)
         return new_val, n > 0

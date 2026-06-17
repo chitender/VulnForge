@@ -84,6 +84,21 @@ def test_empty_findings_returns_unchanged():
     assert result.patches_applied == []
 
 
+def test_short_pkg_name_does_not_corrupt_longer_package():
+    """libssl must not match libssl-dev and mangle it."""
+    dockerfile = textwrap.dedent("""\
+        FROM debian:12-slim
+        RUN apt-get update && apt-get install -y libssl3 libssl3-dev
+    """)
+    findings = [{"pkg_name": "libssl3", "fixed_version": "3.0.14", "is_fixable": True}]
+    result = PatchGenerator().patch(dockerfile, findings)
+    # libssl3 gets pinned
+    assert "libssl3=3.0.14" in result.patched_content
+    # libssl3-dev must NOT be corrupted to libssl3=3.0.14-dev
+    assert "libssl3-dev" in result.patched_content
+    assert "libssl3=3.0.14-dev" not in result.patched_content
+
+
 def test_package_already_pinned_gets_updated():
     dockerfile = textwrap.dedent("""\
         FROM debian:12-slim

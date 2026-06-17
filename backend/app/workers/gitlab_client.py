@@ -92,6 +92,11 @@ class GitLabClient:
             pipeline_id=pipeline_id,
         )
 
+    def get_file_content(self, project_id: str, file_path: str, ref: str) -> str:
+        project = self._gl.projects.get(project_id)
+        f = project.files.get(file_path=file_path, ref=ref)
+        return f.decode().decode()
+
     def get_mr_state(self, project_id: str, mr_iid: int) -> dict:
         project = self._gl.projects.get(project_id)
         mr = project.mergerequests.get(mr_iid)

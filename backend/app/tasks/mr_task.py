@@ -110,6 +110,19 @@ def create_mr_task(
                     image_digest=image_digest,
                 )
             except Exception as exc:
+                import gitlab as _gl_mod
+
+                # Permanent GitLab errors should not be retried
+                if isinstance(exc, _gl_mod.exceptions.GitlabError) and getattr(
+                    exc, "response_code", None
+                ) in (401, 403, 404):
+                    log.error(
+                        "mr_task_permanent_failure",
+                        scan_id=scan_id,
+                        status=exc.response_code,
+                        error=str(exc),
+                    )
+                    raise  # surface immediately — no retry
                 log.error("mr_task_failed", scan_id=scan_id, error=str(exc))
                 raise self.retry(exc=exc)
 
@@ -135,11 +148,8 @@ def _create_mr(
 
     image = db.get(Image, str(scan.image_id))
 
-    # Fetch Dockerfile from GitLab
+    # Single GitLabClient for all operations — no dual-session overhead
     gl = GitLabClient(url="https://gitlab.com", token=gitlab_token)
-    import gitlab as python_gitlab
-    raw_gl = python_gitlab.Gitlab("https://gitlab.com", private_token=gitlab_token)
-    project = raw_gl.projects.get(gitlab_project_id)
 
     dockerfile_path = (
         image.base_dockerfile_path
@@ -147,8 +157,7 @@ def _create_mr(
         else image.app_dockerfile_path
     )
 
-    df_file = project.files.get(file_path=dockerfile_path, ref=target_branch)
-    dockerfile_content = df_file.decode().decode()
+    dockerfile_content = gl.get_file_content(gitlab_project_id, dockerfile_path, target_branch)
 
     # Build patch from selected findings
     findings = db.query(Finding).filter(Finding.id.in_(finding_ids)).all()
