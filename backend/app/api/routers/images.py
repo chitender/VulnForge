@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.api.deps import DB, CurrentUser
 from app.schemas.image import ImageCreate, ImageResponse, ImageUpdate
 from app.services.image_service import ImageService
+from app.services.registry_service import RegistryService
 
 router = APIRouter(prefix="/api/images", tags=["images"])
 log = structlog.get_logger()
@@ -22,11 +23,27 @@ async def create_image(body: ImageCreate, user: CurrentUser, db: DB) -> Any:
     teams = _team_ids(user)
     if not teams:
         raise HTTPException(400, "User has no team membership")
-    svc = ImageService()
-    img = await svc.create(
+
+    # Verify the referenced registry belongs to one of the caller's teams.
+    # This prevents cross-tenant association: an attacker supplying a
+    # registry_id from another team would gain indirect credential access at
+    # scan time.
+    reg = None
+    for team_id in teams:
+        reg = await RegistryService().get(
+            db=db, registry_id=str(body.registry_id), team_id=team_id
+        )
+        if reg:
+            break
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registry not found")
+
+    # Use the registry's actual team_id so image and registry are always
+    # co-tenant, regardless of how many teams the user belongs to.
+    img = await ImageService().create(
         db=db,
         owner_id=user["sub"],
-        team_id=teams[0],
+        team_id=str(reg.team_id),
         registry_id=str(body.registry_id),
         repository=body.repository,
         tag=body.tag,

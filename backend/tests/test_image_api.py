@@ -50,7 +50,11 @@ def _mock_image(**overrides) -> MagicMock:
 
 
 def test_create_image_returns_201():
-    with patch("app.api.routers.images.ImageService") as MockSvc:
+    mock_reg = MagicMock()
+    mock_reg.team_id = uuid.UUID("00000000-0000-0000-0000-000000000010")
+    with patch("app.api.routers.images.RegistryService") as MockRegSvc, \
+         patch("app.api.routers.images.ImageService") as MockSvc:
+        MockRegSvc.return_value.get = AsyncMock(return_value=mock_reg)
         MockSvc.return_value.create = AsyncMock(return_value=_mock_image())
         resp = TestClient(app).post(
             "/api/images",
@@ -61,6 +65,19 @@ def test_create_image_returns_201():
     data = resp.json()
     assert data["repository"] == "myorg/payments-api"
     assert data["service_type"] == "BACKEND"
+
+
+def test_create_image_rejects_cross_tenant_registry():
+    """Supplying a registry_id that belongs to a different team must return 404."""
+    with patch("app.api.routers.images.RegistryService") as MockRegSvc:
+        MockRegSvc.return_value.get = AsyncMock(return_value=None)  # not in caller's teams
+        resp = TestClient(app).post(
+            "/api/images",
+            json=IMAGE_PAYLOAD,
+            headers={"Authorization": "Bearer fake"},
+        )
+    assert resp.status_code == 404
+    assert "Registry not found" in resp.json()["detail"]
 
 
 def test_list_images_returns_200():
