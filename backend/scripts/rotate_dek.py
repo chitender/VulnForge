@@ -45,7 +45,7 @@ def main() -> None:
         print("ERROR: DATABASE_URL is not set", file=sys.stderr)
         sys.exit(1)
 
-    sync_url = db_url.replace("+asyncpg", "+psycopg2").replace("+asyncpg", "")
+    sync_url = db_url.replace("+asyncpg", "+psycopg2")
     engine = create_engine(sync_url)
     Session = sessionmaker(engine)
 

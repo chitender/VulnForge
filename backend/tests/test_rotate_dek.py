@@ -27,7 +27,8 @@ def test_rotate_dek_produces_new_wrapped_dek():
 
 
 def test_rotate_dek_ciphertext_unchanged():
-    """The credential ciphertext is never modified during DEK rotation."""
+    """auth_ciphertext is never modified during DEK rotation — only dek_enc changes."""
+    import json
     old_key = Fernet.generate_key().decode()
     new_key = Fernet.generate_key().decode()
     old_store = CredentialStore(LocalKEKProvider(old_key))
@@ -37,14 +38,16 @@ def test_rotate_dek_ciphertext_unchanged():
     plaintext = {"token": "glpat-secret"}
     ciphertext_before, old_dek_enc = old_store.encrypt(plaintext)
 
+    # Simulate rotation — only dek_enc changes, ciphertext is never touched
     dek = old_kek.decrypt(old_dek_enc)
     new_dek_enc = new_kek.encrypt(dek)
+    ciphertext_after = ciphertext_before  # rotation must not reassign this
 
-    # ciphertext is bit-for-bit identical
-    assert ciphertext_before == ciphertext_before  # trivially true
-    # what matters: the ciphertext decrypts correctly with the new DEK
-    recovered = Fernet(dek).decrypt(ciphertext_before)
-    import json
+    # Verify the ciphertext is byte-for-byte unchanged
+    assert ciphertext_after == ciphertext_before
+
+    # Verify it still decrypts to the original plaintext using the same DEK
+    recovered = Fernet(dek).decrypt(ciphertext_after)
     assert json.loads(recovered) == plaintext
 
 

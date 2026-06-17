@@ -27,7 +27,7 @@ worker:
   keda:
     minReplicas: 2
     maxReplicas: 50    # 50 pods × 2 = 100 parallel scans (the stated SLO)
-    listLength: "2"    # scale up when queue depth > 2 items/replica
+    listLength: 2    # scale up when queue depth > 2 items/replica
 
 trivyServer:
   replicas: 2          # baseline; HPA scales further under load

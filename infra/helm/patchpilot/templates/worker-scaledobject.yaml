@@ -17,4 +17,4 @@ spec:
         # Redis list depth — scale up when queue > listLength items per current replica
         address: {{ tpl .Values.config.redisUrl . | trimPrefix "redis://" }}
         listName: celery
-        listLength: {{ .Values.worker.keda.listLength | quote }}
+        listLength: {{ .Values.worker.keda.listLength | toString | quote }}
