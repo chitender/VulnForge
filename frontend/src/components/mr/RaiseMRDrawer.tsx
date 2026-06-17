@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { mrApi, type RaiseMRBody } from '../../api/mergeRequests'
 import { resolveBranchPreview } from '../../lib/branchPreview'
@@ -8,7 +8,6 @@ interface Props {
   open: boolean
   onClose: () => void
   scanId: string
-  imageId: string
   imageRepo: string
   imageTag: string
   findings: Finding[]
@@ -36,14 +35,23 @@ export function RaiseMRDrawer({
   const today = new Date().toISOString().split('T')[0]
   const imageSlug = imageRepo.replace(/\//g, '-')
 
+  const scanIdShort = scanId.slice(0, 8)  // short prefix for branch names
+
   const previewBranch = resolveBranchPreview(template, {
     image: imageSlug,
     date: today,
     version: version || '{version}',
     tag: imageTag,
+    scan_id: scanIdShort,
   })
 
   const selectedFindings = findings.filter(f => selectedIds.has(f.id))
+
+  // Clear the GitLab token whenever the drawer closes — it must not persist
+  // in React state between open/close cycles ("write-only, not stored" guarantee)
+  useEffect(() => {
+    if (!open) setGitlabToken('')
+  }, [open])
 
   const mut = useMutation({
     mutationFn: (body: RaiseMRBody) => mrApi.create(body),
@@ -131,7 +139,7 @@ export function RaiseMRDrawer({
             <label className="block text-xs text-slate-400 mb-1 font-medium">
               Source branch template{' '}
               <span className="text-slate-600 font-normal">
-                — vars: {'{image}'} {'{date}'} {'{version}'} {'{tag}'}
+                — vars: {'{image}'} {'{date}'} {'{version}'} {'{tag}'} {'{scan_id}'}
               </span>
             </label>
             <input
@@ -238,6 +246,7 @@ export function RaiseMRDrawer({
                   image: imageSlug,
                   date: today,
                   tag: imageTag,
+                  scan_id: scanIdShort,
                 },
               })
             }

@@ -134,7 +134,6 @@ export function ScanResultsPage() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         scanId={scan.id}
-        imageId={scan.image_id}
         imageRepo={imageQ.data?.repository ?? ''}
         imageTag={imageQ.data?.tag ?? ''}
         findings={findingsQ.data ?? []}
