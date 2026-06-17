@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "patchpilot.fullname" . }}-trivy-server
+  labels: {{ include "patchpilot.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.trivyServer.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "patchpilot.fullname" . }}-trivy-server
+  template:
+    metadata:
+      labels:
+        app: {{ include "patchpilot.fullname" . }}-trivy-server
+        {{ include "patchpilot.selectorLabels" . | nindent 8 }}
+    spec:
+      # initContainer downloads the vuln DB into an emptyDir so each pod has
+      # its own DB copy — avoids shared RWO PVC bottleneck and SPOF.
+      initContainers:
+        - name: trivy-db-init
+          image: aquasec/trivy:latest
+          command:
+            - trivy
+            - image
+            - --download-db-only
+            - --cache-dir
+            - /trivy-cache
+          volumeMounts:
+            - name: trivy-cache
+              mountPath: /trivy-cache
+      containers:
+        - name: trivy-server
+          image: aquasec/trivy:latest
+          command:
+            - trivy
+            - server
+            - --listen
+            - 0.0.0.0:4954
+            - --cache-dir
+            - /trivy-cache
+          ports:
+            - name: trivy
+              containerPort: 4954
+          volumeMounts:
+            - name: trivy-cache
+              mountPath: /trivy-cache
+          readinessProbe:
+            tcpSocket:
+              port: 4954
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 4954
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 500m, memory: 512Mi }
+            limits:   { cpu: 2,    memory: 2Gi }
+      volumes:
+        - name: trivy-cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "patchpilot.fullname" . }}-trivy-server
+  labels: {{ include "patchpilot.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: {{ include "patchpilot.fullname" . }}-trivy-server
+  ports:
+    - name: trivy
+      port: 4954
+      targetPort: 4954

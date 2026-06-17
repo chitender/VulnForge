@@ -1,0 +1,22 @@
+global:
+  image:
+    tag: latest   # staging tracks latest; prod pins a specific sha/version
+
+backend:
+  replicaCount: 1
+
+worker:
+  keda:
+    minReplicas: 1
+    maxReplicas: 10   # lower ceiling for staging cost control
+
+trivyServer:
+  replicas: 1
+  hpa:
+    enabled: false
+
+frontend:
+  replicaCount: 1
+
+ingress:
+  host: patchpilot-staging.example.com

@@ -1,0 +1,51 @@
+name: Helm Release
+
+on:
+  push:
+    tags: ["helm/v*"]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Package chart
+        run: helm package infra/helm/patchpilot/ --destination /tmp/helm-packages
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: /tmp/helm-packages/*.tgz
+
+      - name: Publish to gh-pages Helm repo
+        # github.ref_name is a controlled tag name — still passed through env
+        # to avoid any future injection if the trigger pattern ever widens.
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout gh-pages 2>/dev/null || git checkout --orphan gh-pages
+          cp /tmp/helm-packages/*.tgz .
+          HELM_REPO_URL="https://${REPO_OWNER}.github.io/${REPO_NAME}"
+          if [ -f index.yaml ]; then
+            helm repo index . --url "$HELM_REPO_URL" --merge index.yaml
+          else
+            helm repo index . --url "$HELM_REPO_URL"
+          fi
+          git add *.tgz index.yaml
+          git commit -m "helm: release ${REF_NAME}"
+          git push origin gh-pages

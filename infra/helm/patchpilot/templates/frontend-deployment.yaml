@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "patchpilot.fullname" . }}-frontend
+  labels: {{ include "patchpilot.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "patchpilot.fullname" . }}-frontend
+  template:
+    metadata:
+      labels:
+        app: {{ include "patchpilot.fullname" . }}-frontend
+        {{ include "patchpilot.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: frontend
+          image: {{ .Values.global.image.registry }}/{{ .Values.global.image.org }}/patchpilot-frontend:{{ .Values.global.image.tag }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.frontend.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.frontend.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m,  memory: 64Mi }
+            limits:   { cpu: 200m, memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "patchpilot.fullname" . }}-frontend
+  labels: {{ include "patchpilot.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: {{ include "patchpilot.fullname" . }}-frontend
+  ports:
+    - port: {{ .Values.frontend.service.port }}
+      targetPort: {{ .Values.frontend.service.port }}

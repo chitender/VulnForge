@@ -1,0 +1,20 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "patchpilot.fullname" . }}-worker
+  labels: {{ include "patchpilot.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "patchpilot.fullname" . }}-worker
+  minReplicaCount: {{ .Values.worker.keda.minReplicas }}
+  maxReplicaCount: {{ .Values.worker.keda.maxReplicas }}
+  cooldownPeriod: 60
+  triggers:
+    - type: redis
+      metadata:
+        # Redis list depth — scale up when queue > listLength items per current replica
+        address: {{ tpl .Values.config.redisUrl . | trimPrefix "redis://" }}
+        listName: celery
+        listLength: {{ .Values.worker.keda.listLength | toString | quote }}

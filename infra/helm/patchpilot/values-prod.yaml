@@ -1,0 +1,27 @@
+global:
+  image:
+    tag: ""   # MUST be overridden at deploy time: helm upgrade --set global.image.tag=<sha>
+    pullPolicy: IfNotPresent
+
+backend:
+  replicaCount: 3
+
+worker:
+  keda:
+    minReplicas: 2
+    maxReplicas: 50
+
+trivyServer:
+  replicas: 3
+  hpa:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 12
+    cpuTargetPercent: 60
+
+frontend:
+  replicaCount: 3
+
+ingress:
+  host: patchpilot.example.com
+  tls: true
