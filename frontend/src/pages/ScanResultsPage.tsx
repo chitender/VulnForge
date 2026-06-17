@@ -36,6 +36,13 @@ export function ScanResultsPage() {
 
   const scan = scanQ.data
 
+  if (scanQ.isLoading) {
+    return <p className="text-slate-400">Loading scan…</p>
+  }
+  if (scanQ.isError || !scan) {
+    return <p className="text-red-400">Failed to load scan. Please try again.</p>
+  }
+
   return (
     <div className="max-w-6xl">
       {/* Header */}
@@ -81,7 +88,12 @@ export function ScanResultsPage() {
               <span className="text-sm">
                 {selectedIds.size} finding{selectedIds.size > 1 ? 's' : ''} selected
               </span>
-              <button className="bg-white text-blue-600 px-4 py-1 rounded font-medium text-sm hover:bg-blue-50 transition-colors">
+              {/* TODO Phase 7: wire to RaiseMRDrawer */}
+              <button
+                disabled
+                className="bg-white text-blue-600 px-4 py-1 rounded font-medium text-sm opacity-50 cursor-not-allowed"
+                title="MR creation coming in Phase 7"
+              >
                 Raise MR →
               </button>
             </div>

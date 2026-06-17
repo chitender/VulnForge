@@ -1,6 +1,6 @@
 import { useAuth } from 'react-oidc-context'
 import { useEffect } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { clearAuthToken, setAuthToken } from './lib/api'
 import { AppLayout } from './components/layout/AppLayout'
 import { ImagesPage } from './pages/ImagesPage'
@@ -43,8 +43,7 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
+    <Routes>
         <Route element={<AppLayout />}>
           <Route index element={<Navigate to="/images" replace />} />
           <Route path="/registries" element={<RegistriesPage />} />
@@ -54,6 +53,5 @@ export default function App() {
           <Route path="/merge-requests" element={<MergeRequestsPage />} />
         </Route>
       </Routes>
-    </BrowserRouter>
   )
 }
