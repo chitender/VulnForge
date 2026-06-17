@@ -24,6 +24,7 @@ export interface RaiseMRBody {
   targets: ('BASE_DOCKERFILE' | 'APP_DOCKERFILE')[]
   source_branch_template: string
   target_branch: string
+  gitlab_token: string  // write-only, sent to backend but never stored in state
   template_vars: Record<string, string>
 }
 

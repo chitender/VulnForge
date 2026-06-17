@@ -2,13 +2,16 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { scansApi } from '../api/scans'
+import { imagesApi } from '../api/images'
 import { FindingsTable } from '../components/scans/FindingsTable'
 import { ScanStatusBadge } from '../components/scans/ScanStatusBadge'
 import { SeverityDonut } from '../components/scans/SeverityDonut'
+import { RaiseMRDrawer } from '../components/mr/RaiseMRDrawer'
 
 export function ScanResultsPage() {
   const { id } = useParams<{ id: string }>()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const scanQ = useQuery({
     queryKey: ['scan', id],
@@ -26,6 +29,15 @@ export function ScanResultsPage() {
     enabled: scanQ.data?.status === 'SUCCEEDED',
   })
 
+  const scanData = scanQ.data
+
+  // Fetch image metadata so the drawer can resolve branch templates
+  const imageQ = useQuery({
+    queryKey: ['image', scanData?.image_id],
+    queryFn: () => imagesApi.get(scanData!.image_id),
+    enabled: !!scanData?.image_id,
+  })
+
   const toggle = (fid: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
@@ -34,7 +46,7 @@ export function ScanResultsPage() {
     })
   }
 
-  const scan = scanQ.data
+  const scan = scanData
 
   if (scanQ.isLoading) {
     return <p className="text-slate-400">Loading scan…</p>
@@ -88,11 +100,9 @@ export function ScanResultsPage() {
               <span className="text-sm">
                 {selectedIds.size} finding{selectedIds.size > 1 ? 's' : ''} selected
               </span>
-              {/* TODO Phase 7: wire to RaiseMRDrawer */}
               <button
-                disabled
-                className="bg-white text-blue-600 px-4 py-1 rounded font-medium text-sm opacity-50 cursor-not-allowed"
-                title="MR creation coming in Phase 7"
+                onClick={() => setDrawerOpen(true)}
+                className="bg-white text-blue-600 px-4 py-1 rounded font-medium text-sm hover:bg-blue-50 transition-colors"
               >
                 Raise MR →
               </button>
@@ -118,6 +128,17 @@ export function ScanResultsPage() {
           <p className="text-sm font-mono">{scan.error_text}</p>
         </div>
       )}
+
+      {/* Raise MR drawer */}
+      <RaiseMRDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        scanId={scan.id}
+        imageRepo={imageQ.data?.repository ?? ''}
+        imageTag={imageQ.data?.tag ?? ''}
+        findings={findingsQ.data ?? []}
+        selectedIds={selectedIds}
+      />
     </div>
   )
 }
