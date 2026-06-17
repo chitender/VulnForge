@@ -83,6 +83,33 @@ def test_trivy_cmd_uses_server_flag():
     assert "http://trivy-server:4954" in captured["cmd"]
 
 
+def test_end_of_options_sentinel_in_cmd():
+    """-- must appear before image_ref so a flag-like image_ref can't inject options."""
+    captured = {}
+
+    def capture_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        return _mock_proc(stdout=json.dumps(SAMPLE_REPORT))
+
+    with patch("subprocess.run", side_effect=capture_run):
+        TrivyClient("http://trivy-server:4954").scan("myimage:1.0", {})
+
+    idx_sentinel = captured["cmd"].index("--")
+    idx_image = captured["cmd"].index("myimage:1.0")
+    assert idx_image > idx_sentinel, "image_ref must appear after the -- sentinel"
+
+
+def test_flag_like_image_ref_rejected():
+    """image_ref starting with '-' must raise before subprocess is called."""
+    with pytest.raises(ValueError, match="flag"):
+        TrivyClient("http://trivy-server:4954").scan("--malicious-flag", {})
+
+
+def test_image_ref_with_shell_metacharacters_rejected():
+    with pytest.raises(ValueError, match="invalid characters"):
+        TrivyClient("http://trivy-server:4954").scan("myimage:1.0; rm -rf /", {})
+
+
 def test_scan_empty_results_when_no_vulnerabilities():
     report = {**SAMPLE_REPORT, "Results": []}
     with patch("subprocess.run", return_value=_mock_proc(stdout=json.dumps(report))):

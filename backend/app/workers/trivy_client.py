@@ -2,8 +2,24 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+
+# Docker image reference: [registry/]name[:tag][@sha256:digest]
+# Blocks anything starting with '-' (flag injection) and shell metacharacters.
+_IMAGE_REF_RE = re.compile(
+    r"^[a-zA-Z0-9][a-zA-Z0-9._\-/]*(:[a-zA-Z0-9._\-]+)?(@sha256:[a-f0-9]+)?$"
+)
+
+
+def _validate_image_ref(image_ref: str) -> None:
+    if not image_ref:
+        raise ValueError("image_ref must not be empty")
+    if image_ref.startswith("-"):
+        raise ValueError(f"image_ref looks like a flag: {image_ref!r}")
+    if not _IMAGE_REF_RE.match(image_ref):
+        raise ValueError(f"image_ref contains invalid characters: {image_ref!r}")
 
 
 @dataclass
@@ -19,6 +35,7 @@ class TrivyClient:
         self._server_url = server_url
 
     def scan(self, image_ref: str, cred_env: dict[str, str]) -> TrivyScanResult:
+        _validate_image_ref(image_ref)
         env = {**os.environ, **cred_env}
         cmd = [
             "trivy", "image",
@@ -28,6 +45,7 @@ class TrivyClient:
             "--scanners", "vuln",
             "--quiet",
             "--timeout", "15m",
+            "--",        # end-of-options sentinel — image_ref cannot be parsed as a flag
             image_ref,
         ]
         proc = subprocess.run(
