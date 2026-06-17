@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import images, registries
+from app.api.routers import images, registries, scans
 from app.core.auth import CurrentUser
 from app.core.logging import configure_logging
 
@@ -20,6 +20,7 @@ app.add_middleware(
 
 app.include_router(registries.router)
 app.include_router(images.router)
+app.include_router(scans.router)
 
 
 @app.get("/api/me")
