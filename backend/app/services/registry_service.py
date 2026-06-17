@@ -43,8 +43,8 @@ class RegistryService:
         await db.refresh(reg)
         return reg
 
-    async def list(self, db: AsyncSession, team_id: str) -> list[Registry]:
-        q = team_scoped_query(select(Registry), Registry, [team_id])
+    async def list(self, db: AsyncSession, team_ids: list[str]) -> list[Registry]:
+        q = team_scoped_query(select(Registry), Registry, team_ids)
         result = await db.execute(q)
         return list(result.scalars().all())
 

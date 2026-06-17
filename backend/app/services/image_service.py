@@ -43,8 +43,8 @@ class ImageService:
         await db.refresh(img)
         return img
 
-    async def list(self, db: AsyncSession, team_id: str) -> list[Image]:
-        q = team_scoped_query(select(Image), Image, [team_id])
+    async def list(self, db: AsyncSession, team_ids: list[str]) -> list[Image]:
+        q = team_scoped_query(select(Image), Image, team_ids)
         result = await db.execute(q)
         return list(result.scalars().all())
 

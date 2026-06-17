@@ -75,8 +75,8 @@ async def test_list_excludes_other_team(db, image_svc, registry_id, test_user):
         gitlab_project_id="myorg/web-app",
         gitlab_default_branch="develop",
     )
-    rows_a = await image_svc.list(db=db, team_id=TEAM_A)
-    rows_b = await image_svc.list(db=db, team_id=TEAM_B)
+    rows_a = await image_svc.list(db=db, team_ids=[TEAM_A])
+    rows_b = await image_svc.list(db=db, team_ids=[TEAM_B])
     assert any(r.repository == "myorg/web-app" for r in rows_a)
     assert not any(r.repository == "myorg/web-app" for r in rows_b)
 
@@ -120,8 +120,32 @@ async def test_delete_soft_deletes(db, image_svc, registry_id, test_user):
         gitlab_default_branch="main",
     )
     await image_svc.delete(db=db, image_id=str(img.id), team_id=TEAM_A)
-    rows = await image_svc.list(db=db, team_id=TEAM_A)
+    rows = await image_svc.list(db=db, team_ids=[TEAM_A])
     assert not any(r.id == img.id for r in rows)
     # get also returns None for deleted
     gone = await image_svc.get(db=db, image_id=str(img.id), team_id=TEAM_A)
     assert gone is None
+
+
+@pytest.mark.asyncio
+async def test_get_image_positive_and_cross_team(db, image_svc, registry_id, test_user):
+    img = await image_svc.create(
+        db=db,
+        owner_id=OWNER_ID,
+        team_id=TEAM_A,
+        registry_id=registry_id,
+        repository="myorg/get-test",
+        tag="1.0.0",
+        service_type=ServiceType.BACKEND,
+        base_dockerfile_path="Dockerfile",
+        app_dockerfile_path="Dockerfile",
+        gitlab_project_id="myorg/get-test",
+        gitlab_default_branch="main",
+    )
+    fetched = await image_svc.get(db=db, image_id=str(img.id), team_id=TEAM_A)
+    assert fetched is not None
+    assert fetched.id == img.id
+    assert fetched.repository == "myorg/get-test"
+    # Cross-team lookup must return None
+    cross = await image_svc.get(db=db, image_id=str(img.id), team_id=TEAM_B)
+    assert cross is None

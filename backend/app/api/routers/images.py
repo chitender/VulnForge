@@ -42,11 +42,10 @@ async def create_image(body: ImageCreate, user: CurrentUser, db: DB) -> Any:
 
 @router.get("", response_model=list[ImageResponse])
 async def list_images(user: CurrentUser, db: DB) -> Any:
-    svc = ImageService()
-    rows: list = []
-    for team_id in _team_ids(user):
-        rows.extend(await svc.list(db=db, team_id=team_id))
-    return rows
+    teams = _team_ids(user)
+    if not teams:
+        return []
+    return await ImageService().list(db=db, team_ids=teams)
 
 
 @router.get("/{image_id}", response_model=ImageResponse)
