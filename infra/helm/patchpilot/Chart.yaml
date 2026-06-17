@@ -1,0 +1,13 @@
+apiVersion: v2
+name: patchpilot
+description: Container vulnerability scanner with automated GitLab MR patching
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - security
+  - vulnerability
+  - trivy
+  - gitlab
+maintainers:
+  - name: PatchPilot Team

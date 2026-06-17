@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "patchpilot.fullname" . }}-worker
+  labels: {{ include "patchpilot.labels" . | nindent 4 }}
+spec:
+  # Replica count managed by KEDA ScaledObject — do not set replicas here
+  selector:
+    matchLabels:
+      app: {{ include "patchpilot.fullname" . }}-worker
+  template:
+    metadata:
+      labels:
+        app: {{ include "patchpilot.fullname" . }}-worker
+        {{ include "patchpilot.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: worker
+          image: {{ .Values.global.image.registry }}/{{ .Values.global.image.org }}/patchpilot-worker:{{ .Values.global.image.tag }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          command:
+            - celery
+            - -A
+            - app.core.celery_app.celery_app
+            - worker
+            - --pool=prefork
+            - "--concurrency={{ .Values.worker.concurrency }}"
+            - --loglevel=info
+            - --max-tasks-per-child=50
+          envFrom:
+            - configMapRef:
+                name: {{ include "patchpilot.fullname" . }}-config
+          env:
+            - name: MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.externalSecrets.masterKey.secretName }}
+                  key: {{ .Values.externalSecrets.masterKey.secretKey }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.externalSecrets.databaseUrl.secretName }}
+                  key: {{ .Values.externalSecrets.databaseUrl.secretKey }}
+          resources: {{ .Values.worker.resources | toYaml | nindent 12 }}

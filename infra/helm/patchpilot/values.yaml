@@ -1,0 +1,67 @@
+global:
+  image:
+    registry: ghcr.io
+    org: your-org      # replace with your GitHub org
+    tag: latest
+    pullPolicy: IfNotPresent
+
+backend:
+  replicaCount: 2
+  resources:
+    requests: { cpu: 250m, memory: 256Mi }
+    limits:   { cpu: 1,    memory: 512Mi }
+  service:
+    port: 8000
+
+worker:
+  concurrency: 2    # CPU cores per pod; scale pods via KEDA, not this value
+  resources:
+    requests:
+      cpu: "1"
+      memory: 512Mi
+      ephemeral-storage: 4Gi   # image layers pulled per scan
+    limits:
+      cpu: "2"
+      memory: 2Gi
+      ephemeral-storage: 8Gi
+  keda:
+    minReplicas: 2
+    maxReplicas: 50    # 50 pods × 2 = 100 parallel scans (the stated SLO)
+    listLength: "2"    # scale up when queue depth > 2 items/replica
+
+trivyServer:
+  replicas: 2          # baseline; HPA scales further under load
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    cpuTargetPercent: 60
+
+frontend:
+  replicaCount: 2
+  service:
+    port: 80
+
+ingress:
+  enabled: true
+  host: patchpilot.example.com
+  tls: true
+  tlsSecretName: patchpilot-tls
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+
+config:
+  keycloakUrl: ""           # e.g. https://keycloak.example.com
+  keycloakRealm: patchpilot
+  keycloakClientId: patchpilot-backend
+  trivyServerUrl: "http://{{ .Release.Name }}-trivy-server:4954"
+  redisUrl: "redis://{{ .Release.Name }}-redis:6379/0"
+
+externalSecrets:
+  masterKey:
+    secretName: patchpilot-secrets
+    secretKey: master-key
+  databaseUrl:
+    secretName: patchpilot-secrets
+    secretKey: database-url
