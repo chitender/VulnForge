@@ -40,10 +40,10 @@ async def create_registry(body: RegistryCreate, user: CurrentUser, db: DB) -> An
 
 @router.get("", response_model=list[RegistryResponse])
 async def list_registries(user: CurrentUser, db: DB) -> Any:
-    svc = RegistryService()
-    rows: list = []
-    for team_id in _team_ids(user):
-        rows.extend(await svc.list(db=db, team_id=team_id))
+    teams = _team_ids(user)
+    if not teams:
+        return []
+    return await RegistryService().list(db=db, team_ids=teams)
     return rows
 
 
