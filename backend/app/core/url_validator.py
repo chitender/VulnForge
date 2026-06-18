@@ -80,7 +80,7 @@ def validate_registry_url(registry_url: str) -> str:
         raise ValueError(f"registry_url hostname '{hostname}' does not resolve: {exc}") from exc
 
     for _, _, _, _, sockaddr in results:
-        ip = sockaddr[0]
+        ip = str(sockaddr[0])
         if _is_blocked_ip(ip):
             raise ValueError(
                 f"registry_url hostname '{hostname}' resolves to a blocked address ({ip}). "

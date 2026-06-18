@@ -50,9 +50,9 @@ async def raise_mr(body: RaiseMRRequest, user: CurrentUser, db: DB) -> Any:
             source_branch_template=body.source_branch_template,
             target_branch=body.target_branch,
             template_vars=template_vars,
-            gitlab_project_id=img.gitlab_project_id,
+            gitlab_project_id=str(img.gitlab_project_id),
             gitlab_token=body.gitlab_token,
-            image_digest=scan.image_digest or "",
+            image_digest=str(scan.image_digest or ""),
         )
         dispatched.append({"target_kind": target_kind.value, "queued": queued})
 

@@ -67,7 +67,9 @@ async def validate_registry(registry_id: str, user: CurrentUser, db: DB) -> dict
         raise HTTPException(status_code=404, detail="Registry not found")
 
     creds = svc.decrypt_creds(reg)
-    adapter = get_adapter(reg.type)
+    from app.models.registry import RegistryType
+
+    adapter = get_adapter(RegistryType(str(reg.type)))
     try:
         adapter.validate(creds, reg)
         return {"status": "ok"}
