@@ -12,7 +12,6 @@ from app.services.image_service import ImageService
 from app.services.mr_service import MRService
 from app.services.scan_service import ScanService
 from app.tasks.mr_task import dispatch_mr_task
-from app.workers.gitlab_client import GitLabClient
 
 router = APIRouter(prefix="/api/merge-requests", tags=["merge-requests"])
 log = structlog.get_logger()

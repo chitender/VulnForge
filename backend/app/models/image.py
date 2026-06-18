@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship
 from app.models.base import Base, TeamScopedMixin
 
 
-class ServiceType(str, enum.Enum):
+class ServiceType(enum.StrEnum):
     UI = "UI"
     BACKEND = "BACKEND"
 

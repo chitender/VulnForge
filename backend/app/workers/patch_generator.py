@@ -3,6 +3,7 @@
 Scope (v1): pins fixable OS packages in the *final* stage's RUN blocks only.
 FROM lines are never modified (base image tag bump is out of scope for v1).
 """
+
 from __future__ import annotations
 
 import io

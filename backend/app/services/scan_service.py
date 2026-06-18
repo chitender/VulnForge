@@ -18,7 +18,8 @@ class ScanService:
         triggered_by_name: str = "",
     ) -> Scan:
         user_id = await get_or_create_user(
-            db, keycloak_sub=triggered_by,
+            db,
+            keycloak_sub=triggered_by,
             email=triggered_by_email,
             name=triggered_by_name,
         )

@@ -44,13 +44,17 @@ def _mock_image() -> MagicMock:
 
 
 def test_trigger_scan_returns_202():
-    with patch("app.api.routers.scans.ImageService") as MockImgSvc, \
-         patch("app.api.routers.scans.ScanService") as MockScanSvc, \
-         patch("app.api.routers.scans.scan_image_task") as MockTask, \
-         patch("app.api.routers.scans._check_user_rate_limit", return_value=True), \
-         patch("app.services.scan_service.get_or_create_user", new_callable=AsyncMock,
-               return_value=uuid.uuid4()):
-
+    with (
+        patch("app.api.routers.scans.ImageService") as MockImgSvc,
+        patch("app.api.routers.scans.ScanService") as MockScanSvc,
+        patch("app.api.routers.scans.scan_image_task") as MockTask,
+        patch("app.api.routers.scans._check_user_rate_limit", return_value=True),
+        patch(
+            "app.services.scan_service.get_or_create_user",
+            new_callable=AsyncMock,
+            return_value=uuid.uuid4(),
+        ),
+    ):
         MockImgSvc.return_value.get = AsyncMock(return_value=_mock_image())
         MockScanSvc.return_value.create = AsyncMock(return_value=_mock_scan(ScanStatus.QUEUED))
 
@@ -64,9 +68,10 @@ def test_trigger_scan_returns_202():
 
 
 def test_trigger_scan_rate_limited():
-    with patch("app.api.routers.scans.ImageService") as MockImgSvc, \
-         patch("app.api.routers.scans._check_user_rate_limit", return_value=False):
-
+    with (
+        patch("app.api.routers.scans.ImageService") as MockImgSvc,
+        patch("app.api.routers.scans._check_user_rate_limit", return_value=False),
+    ):
         MockImgSvc.return_value.get = AsyncMock(return_value=_mock_image())
         resp = TestClient(app).post(
             f"/api/images/{IMAGE_ID}/scans",
@@ -76,8 +81,10 @@ def test_trigger_scan_rate_limited():
 
 
 def test_trigger_scan_404_when_image_not_found():
-    with patch("app.api.routers.scans.ImageService") as MockImgSvc, \
-         patch("app.api.routers.scans._check_user_rate_limit", return_value=True):
+    with (
+        patch("app.api.routers.scans.ImageService") as MockImgSvc,
+        patch("app.api.routers.scans._check_user_rate_limit", return_value=True),
+    ):
         MockImgSvc.return_value.get = AsyncMock(return_value=None)
         resp = TestClient(app).post(
             f"/api/images/{IMAGE_ID}/scans",
@@ -87,8 +94,10 @@ def test_trigger_scan_404_when_image_not_found():
 
 
 def test_get_scan_returns_200():
-    with patch("app.api.routers.scans.ScanService") as MockScanSvc, \
-         patch("app.api.routers.scans.ImageService") as MockImgSvc:
+    with (
+        patch("app.api.routers.scans.ScanService") as MockScanSvc,
+        patch("app.api.routers.scans.ImageService") as MockImgSvc,
+    ):
         MockScanSvc.return_value.get = AsyncMock(return_value=_mock_scan(ScanStatus.SUCCEEDED))
         MockImgSvc.return_value.get = AsyncMock(return_value=_mock_image())
         resp = TestClient(app).get(
@@ -101,8 +110,10 @@ def test_get_scan_returns_200():
 
 def test_get_scan_returns_404_for_other_team():
     """scan_id belonging to another team must return 404 (not 403) to avoid enumeration."""
-    with patch("app.api.routers.scans.ScanService") as MockScanSvc, \
-         patch("app.api.routers.scans.ImageService") as MockImgSvc:
+    with (
+        patch("app.api.routers.scans.ScanService") as MockScanSvc,
+        patch("app.api.routers.scans.ImageService") as MockImgSvc,
+    ):
         MockScanSvc.return_value.get = AsyncMock(return_value=_mock_scan(ScanStatus.SUCCEEDED))
         MockImgSvc.return_value.get = AsyncMock(return_value=None)  # not in user's teams
         resp = TestClient(app).get(
@@ -127,9 +138,11 @@ def test_get_findings_returns_200():
     mock_finding.is_fixable = True
     mock_finding.status = "OPEN"
 
-    with patch("app.api.routers.scans.ScanService") as MockScanSvc, \
-         patch("app.api.routers.scans.ImageService") as MockImgSvc, \
-         patch("app.api.routers.scans.get_findings_for_scan", return_value=[mock_finding]):
+    with (
+        patch("app.api.routers.scans.ScanService") as MockScanSvc,
+        patch("app.api.routers.scans.ImageService") as MockImgSvc,
+        patch("app.api.routers.scans.get_findings_for_scan", return_value=[mock_finding]),
+    ):
         MockScanSvc.return_value.get = AsyncMock(return_value=_mock_scan(ScanStatus.SUCCEEDED))
         MockImgSvc.return_value.get = AsyncMock(return_value=_mock_image())
         resp = TestClient(app).get(

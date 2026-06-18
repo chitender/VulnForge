@@ -1,4 +1,5 @@
 import json
+
 from cryptography.fernet import Fernet
 
 
@@ -17,6 +18,7 @@ class CredentialStore:
     def __init__(self, kek_provider: LocalKEKProvider | None = None):
         if kek_provider is None:
             from app.core.config import settings
+
             kek_provider = LocalKEKProvider(settings.MASTER_KEY)
         self._kek = kek_provider
 

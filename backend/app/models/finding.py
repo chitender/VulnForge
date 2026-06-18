@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship
 from app.models.base import Base, TimestampMixin
 
 
-class Severity(str, enum.Enum):
+class Severity(enum.StrEnum):
     CRITICAL = "CRITICAL"
     HIGH = "HIGH"
     MEDIUM = "MEDIUM"
@@ -16,7 +16,7 @@ class Severity(str, enum.Enum):
     UNKNOWN = "UNKNOWN"
 
 
-class FindingStatus(str, enum.Enum):
+class FindingStatus(enum.StrEnum):
     OPEN = "OPEN"
     SELECTED = "SELECTED"
     MR_RAISED = "MR_RAISED"

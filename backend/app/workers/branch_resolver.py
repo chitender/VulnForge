@@ -7,6 +7,7 @@ Template variables:
   {version} — free-text release version (user-supplied)
   {scan_id} — short scan UUID prefix (caller supplies)
 """
+
 from __future__ import annotations
 
 

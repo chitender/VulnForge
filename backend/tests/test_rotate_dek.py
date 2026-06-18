@@ -1,5 +1,7 @@
 """Unit tests for the DEK rotation script logic."""
+
 from cryptography.fernet import Fernet
+
 from app.core.credentials import CredentialStore, LocalKEKProvider
 
 
@@ -29,6 +31,7 @@ def test_rotate_dek_produces_new_wrapped_dek():
 def test_rotate_dek_ciphertext_unchanged():
     """auth_ciphertext is never modified during DEK rotation — only dek_enc changes."""
     import json
+
     old_key = Fernet.generate_key().decode()
     new_key = Fernet.generate_key().decode()
     old_store = CredentialStore(LocalKEKProvider(old_key))
@@ -40,7 +43,7 @@ def test_rotate_dek_ciphertext_unchanged():
 
     # Simulate rotation — only dek_enc changes, ciphertext is never touched
     dek = old_kek.decrypt(old_dek_enc)
-    new_dek_enc = new_kek.encrypt(dek)
+    new_kek.encrypt(dek)
     ciphertext_after = ciphertext_before  # rotation must not reassign this
 
     # Verify the ciphertext is byte-for-byte unchanged
@@ -59,5 +62,6 @@ def test_wrong_old_key_raises():
     _, dek_enc = store.encrypt({"x": "y"})
 
     import pytest
+
     with pytest.raises(Exception):
         Fernet(wrong_key.encode()).decrypt(dek_enc)

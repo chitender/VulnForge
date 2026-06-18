@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship
 from app.models.base import Base, TeamScopedMixin
 
 
-class RegistryType(str, enum.Enum):
+class RegistryType(enum.StrEnum):
     ECR = "ECR"
     ACR = "ACR"
     DOCKERHUB = "DOCKERHUB"

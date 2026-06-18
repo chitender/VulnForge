@@ -8,13 +8,13 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.api.deps import DB, CurrentUser
-from app.models.finding import Finding, FindingStatus, Severity
+from app.core.config import settings
+from app.models.finding import Finding, Severity
 from app.schemas.finding import FindingResponse
 from app.schemas.scan import ScanResponse, ScanTriggerResponse
 from app.services.image_service import ImageService
 from app.services.scan_service import ScanService
 from app.tasks.scan_task import scan_image_task
-from app.core.config import settings
 
 router = APIRouter(tags=["scans"])
 log = structlog.get_logger()
@@ -58,6 +58,7 @@ async def get_findings_for_scan(
     fixable_only: bool = False,
 ) -> list[Finding]:
     import uuid as _uuid
+
     q = select(Finding).where(Finding.scan_id == _uuid.UUID(scan_id))
     if severity:
         try:
@@ -86,9 +87,7 @@ async def trigger_scan(image_id: str, user: CurrentUser, db: DB) -> Any:
         raise HTTPException(404, "Image not found")
 
     if not _check_user_rate_limit(user["sub"]):
-        raise HTTPException(
-            429, f"Max {_MAX_CONCURRENT_SCANS_PER_USER} concurrent scans per user"
-        )
+        raise HTTPException(429, f"Max {_MAX_CONCURRENT_SCANS_PER_USER} concurrent scans per user")
 
     scan_svc = ScanService()
     scan = await scan_svc.create(

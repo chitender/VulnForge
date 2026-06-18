@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -59,7 +59,7 @@ class RegistryService:
         reg = await self.get(db, registry_id, team_id)
         if not reg:
             return False
-        reg.deleted_at = datetime.now(timezone.utc)
+        reg.deleted_at = datetime.now(UTC)
         await db.commit()
         return True
 

@@ -17,9 +17,7 @@ class GitLabClient:
     def __init__(self, url: str, token: str):
         self._gl = gitlab.Gitlab(url, private_token=token)
 
-    def ensure_branch(
-        self, project_id: str, source_branch: str, target_branch: str
-    ) -> None:
+    def ensure_branch(self, project_id: str, source_branch: str, target_branch: str) -> None:
         project = self._gl.projects.get(project_id)
         existing = {b.name for b in project.branches.list(all=True)}
         if source_branch not in existing:

@@ -1,8 +1,6 @@
 import textwrap
 
-import pytest
-
-from app.workers.patch_generator import PatchGenerator, PatchResult
+from app.workers.patch_generator import PatchGenerator
 
 SIMPLE_DOCKERFILE = textwrap.dedent("""\
     FROM debian:12-slim
@@ -25,8 +23,8 @@ MULTISTAGE_DOCKERFILE = textwrap.dedent("""\
 """)
 
 FIXABLE = [
-    {"pkg_name": "libssl3",  "fixed_version": "3.0.14", "is_fixable": True},
-    {"pkg_name": "curl",     "fixed_version": "7.88.1",  "is_fixable": True},
+    {"pkg_name": "libssl3", "fixed_version": "3.0.14", "is_fixable": True},
+    {"pkg_name": "curl", "fixed_version": "7.88.1", "is_fixable": True},
 ]
 UNFIXABLE = [
     {"pkg_name": "bash", "fixed_version": None, "is_fixable": False},
@@ -66,7 +64,7 @@ def test_multistage_only_patches_final_stage():
     result = PatchGenerator().patch(MULTISTAGE_DOCKERFILE, FIXABLE)
     lines = result.patched_content.splitlines()
     # Find the second FROM (final stage) line index
-    from_indices = [i for i, l in enumerate(lines) if l.startswith("FROM")]
+    from_indices = [i for i, ln in enumerate(lines) if ln.startswith("FROM")]
     assert len(from_indices) == 2
     final_stage_start = from_indices[1]
     builder_section = "\n".join(lines[:final_stage_start])

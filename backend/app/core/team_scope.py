@@ -13,6 +13,7 @@ Usage in services:
         result = await db.execute(q)
         return list(result.scalars().all())
 """
+
 from __future__ import annotations
 
 import uuid

@@ -15,13 +15,14 @@ Usage:
 Safe: it never touches auth_ciphertext — the actual credential bytes stay encrypted
 under the same DEK throughout. Only the DEK wrapping key changes.
 """
+
 from __future__ import annotations
 
 import os
 import sys
 
 from cryptography.fernet import Fernet
-from sqlalchemy import create_engine, select, update
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 # Import models directly

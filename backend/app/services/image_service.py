@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -72,6 +72,6 @@ class ImageService:
         img = await self.get(db, image_id, team_id)
         if not img:
             return False
-        img.deleted_at = datetime.now(timezone.utc)
+        img.deleted_at = datetime.now(UTC)
         await db.commit()
         return True

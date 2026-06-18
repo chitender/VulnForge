@@ -28,7 +28,9 @@ class BaseRegistryAdapter(ABC):
         base_delay = 2.0
         cap = 60.0
         for attempt in range(max_retries):
-            resp = requests.request(method, url, timeout=15, allow_redirects=allow_redirects, **kwargs)
+            resp = requests.request(
+                method, url, timeout=15, allow_redirects=allow_redirects, **kwargs
+            )
             if resp.status_code == 429:
                 delay = min(base_delay * (2**attempt) + random.uniform(0, 1), cap)
                 time.sleep(delay)

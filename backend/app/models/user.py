@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from app.models.base import Base, TimestampMixin
 
 
-class UserRole(str, enum.Enum):
+class UserRole(enum.StrEnum):
     ADMIN = "admin"
     EDITOR = "editor"
     VIEWER = "viewer"

@@ -52,8 +52,10 @@ def _mock_image(**overrides) -> MagicMock:
 def test_create_image_returns_201():
     mock_reg = MagicMock()
     mock_reg.team_id = uuid.UUID("00000000-0000-0000-0000-000000000010")
-    with patch("app.api.routers.images.RegistryService") as MockRegSvc, \
-         patch("app.api.routers.images.ImageService") as MockSvc:
+    with (
+        patch("app.api.routers.images.RegistryService") as MockRegSvc,
+        patch("app.api.routers.images.ImageService") as MockSvc,
+    ):
         MockRegSvc.return_value.get = AsyncMock(return_value=mock_reg)
         MockSvc.return_value.create = AsyncMock(return_value=_mock_image())
         resp = TestClient(app).post(

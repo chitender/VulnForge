@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship
 from app.models.base import Base, TimestampMixin
 
 
-class ScanStatus(str, enum.Enum):
+class ScanStatus(enum.StrEnum):
     QUEUED = "QUEUED"
     RUNNING = "RUNNING"
     SUCCEEDED = "SUCCEEDED"

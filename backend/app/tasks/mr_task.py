@@ -4,6 +4,7 @@ Idempotency layers:
 1. dispatch_mr_task(): Redis SET NX lock (30s) prevents double-enqueue from UI double-click.
 2. create_mr_task():  DB unique partial index + INSERT ... ON CONFLICT handles Celery retries.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -17,9 +18,9 @@ from app.core.celery_app import celery_app
 from app.core.config import settings
 from app.core.db import SyncSessionLocal
 from app.models.finding import Finding, FindingStatus
-from app.models.merge_request import MRState, MergeRequest, PipelineStatus
-from app.models.scan import Scan
 from app.models.image import Image
+from app.models.merge_request import MergeRequest, MRState, PipelineStatus
+from app.models.scan import Scan
 from app.workers.branch_resolver import resolve_branch
 from app.workers.gitlab_client import GitLabClient
 from app.workers.patch_generator import PatchGenerator
@@ -66,9 +67,16 @@ def dispatch_mr_task(
 
     create_mr_task.apply_async(
         args=[
-            scan_id, finding_ids, mr_type, target_kind,
-            source_branch_template, target_branch, template_vars,
-            gitlab_project_id, gitlab_token, image_digest,
+            scan_id,
+            finding_ids,
+            mr_type,
+            target_kind,
+            source_branch_template,
+            target_branch,
+            template_vars,
+            gitlab_project_id,
+            gitlab_token,
+            image_digest,
         ]
     )
     return True
@@ -186,7 +194,8 @@ def _create_mr(
     # Build MR description
     raised_by = template_vars.get("raised_by", "unknown")
     cve_rows = "\n".join(
-        f"| {f.vuln_id} | {f.pkg_name} | {f.installed_version} → {f.fixed_version} | {f.severity.value} |"
+        f"| {f.vuln_id} | {f.pkg_name} | {f.installed_version}"
+        f" → {f.fixed_version} | {f.severity.value} |"
         for f in findings
         if f.is_fixable
     )
@@ -242,7 +251,7 @@ def _create_mr(
             image_digest=image_digest,
         )
         .on_conflict_do_update(
-            # matches uix_mr_open: (gitlab_project_id, image_digest, target_branch, target_kind) WHERE state='OPENED'
+            # matches uix_mr_open partial index WHERE state='OPENED'
             index_elements=["gitlab_project_id", "image_digest", "target_branch", "target_kind"],
             index_where="state = 'OPENED'",
             set_={

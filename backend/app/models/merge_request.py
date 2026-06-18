@@ -7,24 +7,24 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from app.models.base import Base, TimestampMixin
 
 
-class MRType(str, enum.Enum):
+class MRType(enum.StrEnum):
     FEATURE = "FEATURE"
     HOTFIX = "HOTFIX"
 
 
-class MRTargetKind(str, enum.Enum):
+class MRTargetKind(enum.StrEnum):
     BASE_DOCKERFILE = "BASE_DOCKERFILE"
     APP_DOCKERFILE = "APP_DOCKERFILE"
 
 
-class MRState(str, enum.Enum):
+class MRState(enum.StrEnum):
     OPENED = "OPENED"
     MERGED = "MERGED"
     CLOSED = "CLOSED"
     FAILED = "FAILED"
 
 
-class PipelineStatus(str, enum.Enum):
+class PipelineStatus(enum.StrEnum):
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     PASSED = "PASSED"

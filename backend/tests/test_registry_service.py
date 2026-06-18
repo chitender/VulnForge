@@ -64,14 +64,19 @@ async def test_delete_soft_deletes(db, service, test_user):
         region=None,
         creds={"username": "u", "password": "p"},
     )
-    await service.delete(db=db, registry_id=str(reg.id), team_id="00000000-0000-0000-0000-000000000005")
+    await service.delete(
+        db=db, registry_id=str(reg.id), team_id="00000000-0000-0000-0000-000000000005"
+    )
     rows = await service.list(db=db, team_ids=["00000000-0000-0000-0000-000000000005"])
     assert not any(r.id == reg.id for r in rows)
 
 
 @pytest.mark.asyncio
 async def test_decrypt_creds_roundtrip(db, service, test_user):
-    plaintext = {"aws_access_key_id": "AKIAIOSFODNN7EXAMPLE", "aws_secret_access_key": "wJalrXUtnFEMI"}
+    plaintext = {
+        "aws_access_key_id": "AKIAIOSFODNN7EXAMPLE",
+        "aws_secret_access_key": "wJalrXUtnFEMI",
+    }
     reg = await service.create(
         db=db,
         owner_id="00000000-0000-0000-0000-000000000001",

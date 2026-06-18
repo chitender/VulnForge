@@ -1,4 +1,5 @@
 import logging
+
 import structlog
 
 _SECRET_FIELDS = {"token", "password", "secret", "key", "dek", "ciphertext", "auth"}

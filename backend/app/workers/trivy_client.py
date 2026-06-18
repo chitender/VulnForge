@@ -38,14 +38,20 @@ class TrivyClient:
         _validate_image_ref(image_ref)
         env = {**os.environ, **cred_env}
         cmd = [
-            "trivy", "image",
-            "--server", self._server_url,
-            "--format", "json",
-            "--severity", "CRITICAL,HIGH,MEDIUM,LOW",
-            "--scanners", "vuln",
+            "trivy",
+            "image",
+            "--server",
+            self._server_url,
+            "--format",
+            "json",
+            "--severity",
+            "CRITICAL,HIGH,MEDIUM,LOW",
+            "--scanners",
+            "vuln",
             "--quiet",
-            "--timeout", "15m",
-            "--",        # end-of-options sentinel — image_ref cannot be parsed as a flag
+            "--timeout",
+            "15m",
+            "--",  # end-of-options sentinel — image_ref cannot be parsed as a flag
             image_ref,
         ]
         proc = subprocess.run(
@@ -56,9 +62,7 @@ class TrivyClient:
             timeout=960,
         )
         if proc.returncode != 0:
-            raise RuntimeError(
-                f"trivy failed (exit {proc.returncode}): {proc.stderr[:2000]}"
-            )
+            raise RuntimeError(f"trivy failed (exit {proc.returncode}): {proc.stderr[:2000]}")
 
         report = json.loads(proc.stdout)
         meta = report.get("Metadata", {})

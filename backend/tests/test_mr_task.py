@@ -1,9 +1,7 @@
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
-
-from app.tasks.mr_task import dispatch_mr_task, _dedup_key
+from app.tasks.mr_task import _dedup_key, dispatch_mr_task
 
 
 def _dispatch_kwargs(**overrides):
@@ -24,8 +22,10 @@ def _dispatch_kwargs(**overrides):
 
 
 def test_dispatch_enqueues_task_first_time():
-    with patch("app.tasks.mr_task._redis") as mock_redis, \
-         patch("app.tasks.mr_task.create_mr_task") as mock_task:
+    with (
+        patch("app.tasks.mr_task._redis") as mock_redis,
+        patch("app.tasks.mr_task.create_mr_task") as mock_task,
+    ):
         mock_redis.set.return_value = True  # lock acquired
         result = dispatch_mr_task(**_dispatch_kwargs())
 
@@ -34,8 +34,10 @@ def test_dispatch_enqueues_task_first_time():
 
 
 def test_dispatch_deduplicates_second_call():
-    with patch("app.tasks.mr_task._redis") as mock_redis, \
-         patch("app.tasks.mr_task.create_mr_task") as mock_task:
+    with (
+        patch("app.tasks.mr_task._redis") as mock_redis,
+        patch("app.tasks.mr_task.create_mr_task") as mock_task,
+    ):
         mock_redis.set.return_value = False  # lock already held
         result = dispatch_mr_task(**_dispatch_kwargs())
 

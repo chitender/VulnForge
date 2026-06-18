@@ -44,7 +44,6 @@ async def list_registries(user: CurrentUser, db: DB) -> Any:
     if not teams:
         return []
     return await RegistryService().list(db=db, team_ids=teams)
-    return rows
 
 
 @router.delete("/{registry_id}", status_code=status.HTTP_204_NO_CONTENT)

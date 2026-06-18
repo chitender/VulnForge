@@ -1,7 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from app.workers.gitlab_client import GitLabClient, MRResult
 
 
@@ -20,9 +18,7 @@ def test_ensure_branch_creates_when_absent():
 
     client.ensure_branch("myorg/repo", "hotfix/test", "main")
 
-    mock_project.branches.create.assert_called_once_with(
-        {"branch": "hotfix/test", "ref": "main"}
-    )
+    mock_project.branches.create.assert_called_once_with({"branch": "hotfix/test", "ref": "main"})
 
 
 def test_ensure_branch_skips_if_exists():

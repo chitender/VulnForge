@@ -15,10 +15,7 @@ _jwks_cache: TTLCache = TTLCache(maxsize=1, ttl=300)  # 5-minute TTL
 
 @cached(cache=_jwks_cache)
 def _get_jwks() -> dict:
-    url = (
-        f"{settings.KEYCLOAK_URL}/realms/{settings.KEYCLOAK_REALM}"
-        "/protocol/openid-connect/certs"
-    )
+    url = f"{settings.KEYCLOAK_URL}/realms/{settings.KEYCLOAK_REALM}/protocol/openid-connect/certs"
     resp = httpx.get(url, timeout=10)
     resp.raise_for_status()
     return resp.json()

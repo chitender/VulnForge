@@ -6,8 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.models import audit_log, finding, image, merge_request, registry, scan, user  # noqa: F401
 from app.models.base import Base
-from app.models import user, registry, image, scan, finding, merge_request, audit_log  # noqa: F401
 
 _TEST_DB_URL = os.environ.get("TEST_DATABASE_URL", "")
 _SYNC_TEST_URL = _TEST_DB_URL.replace("+asyncpg", "+psycopg2") if _TEST_DB_URL else ""
@@ -25,6 +25,7 @@ def _get_sync_url() -> str:
 
 
 # ── Sync fixtures (schema/model tests) ─────────────────────────────────────
+
 
 @pytest.fixture(scope="session")
 def sync_db_engine():
@@ -44,6 +45,7 @@ def sync_db(sync_db_engine) -> Session:
 
 
 # ── Async fixtures (service tests) ─────────────────────────────────────────
+
 
 @pytest_asyncio.fixture(scope="session")
 async def async_db_engine():
@@ -73,7 +75,7 @@ TEST_OWNER_ID = "00000000-0000-0000-0000-000000000001"
 @pytest_asyncio.fixture(scope="session")
 async def test_user(async_db_engine):
     """Insert a single test user once per session; skip if already exists."""
-    import uuid
+
     from sqlalchemy import text
 
     session_factory = async_sessionmaker(async_db_engine, expire_on_commit=False)

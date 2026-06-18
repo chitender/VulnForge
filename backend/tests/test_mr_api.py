@@ -43,11 +43,12 @@ def _mock_mr() -> MagicMock:
 
 
 def test_raise_mr_returns_202():
-    with patch("app.api.routers.merge_requests.ScanService") as MockScanSvc, \
-         patch("app.api.routers.merge_requests.ImageService") as MockImgSvc, \
-         patch("app.api.routers.merge_requests.dispatch_mr_task", return_value=True), \
-         patch("app.api.routers.merge_requests.AuditService") as MockAudit:
-
+    with (
+        patch("app.api.routers.merge_requests.ScanService") as MockScanSvc,
+        patch("app.api.routers.merge_requests.ImageService") as MockImgSvc,
+        patch("app.api.routers.merge_requests.dispatch_mr_task", return_value=True),
+        patch("app.api.routers.merge_requests.AuditService") as MockAudit,
+    ):
         mock_scan = MagicMock()
         mock_scan.image_id = uuid.uuid4()
         mock_scan.image_digest = "sha256:abc"
@@ -80,8 +81,10 @@ def test_raise_mr_returns_202():
 
 
 def test_list_mrs_returns_200():
-    with patch("app.api.routers.merge_requests.ImageService") as MockImgSvc, \
-         patch("app.api.routers.merge_requests.MRService") as MockMRSvc:
+    with (
+        patch("app.api.routers.merge_requests.ImageService") as MockImgSvc,
+        patch("app.api.routers.merge_requests.MRService") as MockMRSvc,
+    ):
         MockImgSvc.return_value.list = AsyncMock(return_value=[MagicMock(id=uuid.uuid4())])
         MockMRSvc.return_value.list = AsyncMock(return_value=[_mock_mr()])
         resp = TestClient(app).get(
@@ -93,8 +96,10 @@ def test_list_mrs_returns_200():
 
 
 def test_sync_mr_returns_200():
-    with patch("app.api.routers.merge_requests.MRService") as MockMRSvc, \
-         patch("app.api.routers.merge_requests.ImageService") as MockImgSvc:
+    with (
+        patch("app.api.routers.merge_requests.MRService") as MockMRSvc,
+        patch("app.api.routers.merge_requests.ImageService") as MockImgSvc,
+    ):
         mock_mr = _mock_mr()
         MockMRSvc.return_value.get = AsyncMock(return_value=mock_mr)
         MockMRSvc.return_value.update_pipeline_status = AsyncMock(return_value=mock_mr)

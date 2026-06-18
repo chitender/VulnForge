@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import structlog
 import redis as redis_lib
+import structlog
 from opentelemetry import trace
 
 from app.core.celery_app import celery_app
 from app.core.config import settings
 from app.core.credentials import CredentialStore
 from app.core.db import SyncSessionLocal
-from app.models.finding import Finding
 from app.models.scan import Scan, ScanStatus
 from app.workers.findings_parser import parse_findings, summarize_findings
 from app.workers.registry_adapters import get_adapter

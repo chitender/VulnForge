@@ -12,6 +12,7 @@ Blocks:
 
 Apply at BOTH schema-validation time (RegistryCreate) and before each outbound request.
 """
+
 from __future__ import annotations
 
 import ipaddress
@@ -78,7 +79,7 @@ def validate_registry_url(registry_url: str) -> str:
     except socket.gaierror as exc:
         raise ValueError(f"registry_url hostname '{hostname}' does not resolve: {exc}") from exc
 
-    for (_, _, _, _, sockaddr) in results:
+    for _, _, _, _, sockaddr in results:
         ip = sockaddr[0]
         if _is_blocked_ip(ip):
             raise ValueError(

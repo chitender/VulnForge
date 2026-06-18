@@ -30,9 +30,7 @@ async def create_image(body: ImageCreate, user: CurrentUser, db: DB) -> Any:
     # scan time.
     reg = None
     for team_id in teams:
-        reg = await RegistryService().get(
-            db=db, registry_id=str(body.registry_id), team_id=team_id
-        )
+        reg = await RegistryService().get(db=db, registry_id=str(body.registry_id), team_id=team_id)
         if reg:
             break
     if not reg:
@@ -80,8 +78,7 @@ async def update_image(image_id: str, body: ImageUpdate, user: CurrentUser, db: 
     svc = ImageService()
     for team_id in _team_ids(user):
         img = await svc.update(
-            db=db, image_id=image_id, team_id=team_id,
-            **body.model_dump(exclude_none=True)
+            db=db, image_id=image_id, team_id=team_id, **body.model_dump(exclude_none=True)
         )
         if img:
             return img

@@ -9,9 +9,7 @@ from app.models.merge_request import MergeRequest, MRState
 
 
 class MRService:
-    async def list(
-        self, db: AsyncSession, team_image_ids: list[str]
-    ) -> list[MergeRequest]:
+    async def list(self, db: AsyncSession, team_image_ids: list[str]) -> list[MergeRequest]:
         if not team_image_ids:
             return []
         result = await db.execute(
@@ -35,7 +33,7 @@ class MRService:
         mr = await self.get(db, mr_id)
         if not mr:
             return None
-        from app.models.merge_request import PipelineStatus, MRState
+        from app.models.merge_request import PipelineStatus
 
         try:
             mr.pipeline_status = PipelineStatus(pipeline_status)

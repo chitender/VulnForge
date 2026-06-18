@@ -18,8 +18,10 @@ class Settings(BaseSettings):
     def master_key_must_not_be_empty(cls, v: str) -> str:
         if not v:
             raise ValueError(
-                "MASTER_KEY must be set. Generate one with: "
-                "python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+                "MASTER_KEY must be set. "
+                "Generate one with: python -c "
+                "'from cryptography.fernet import Fernet; "
+                "print(Fernet.generate_key().decode())'"
             )
         return v
 

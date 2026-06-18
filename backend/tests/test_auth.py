@@ -9,9 +9,7 @@ from jose import jwt
 
 
 def _make_rsa_key():
-    return rsa.generate_private_key(
-        public_exponent=65537, key_size=2048, backend=default_backend()
-    )
+    return rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend())
 
 
 def _make_token(private_key, sub: str = "user-123", roles: list | None = None) -> str:
@@ -38,9 +36,8 @@ def client_with_mock_jwks():
     public_key = private_key.public_key()
 
     # Build a minimal JWKS dict that python-jose can verify against
-    from jose.backends import RSAKey
+
     from jose.utils import base64url_encode
-    import struct
 
     # Export public key numbers for JWKS
     pub_numbers = public_key.public_numbers()
@@ -68,6 +65,7 @@ def client_with_mock_jwks():
 
 def test_protected_endpoint_rejects_no_token():
     from app.main import app
+
     with TestClient(app) as c:
         resp = c.get("/api/me")
     assert resp.status_code in (401, 403)  # HTTPBearer returns 403 pre-0.111, 401 after
@@ -75,6 +73,7 @@ def test_protected_endpoint_rejects_no_token():
 
 def test_healthz_is_public():
     from app.main import app
+
     with TestClient(app) as c:
         resp = c.get("/healthz")
     assert resp.status_code == 200

@@ -57,7 +57,9 @@ def test_create_registry_returns_201():
 
 def test_credentials_never_in_response():
     with patch("app.api.routers.registries.RegistryService") as MockSvc:
-        MockSvc.return_value.list = AsyncMock(return_value=[_mock_registry("DockerHub", "DOCKERHUB")])
+        MockSvc.return_value.list = AsyncMock(
+            return_value=[_mock_registry("DockerHub", "DOCKERHUB")]
+        )
         resp = _client().get("/api/registries", headers={"Authorization": "Bearer fake"})
     assert resp.status_code == 200
     for reg in resp.json():
@@ -70,7 +72,9 @@ def test_validate_registry_ok():
     with patch("app.api.routers.registries.RegistryService") as MockSvc:
         mock_reg = _mock_registry()
         MockSvc.return_value.get = AsyncMock(return_value=mock_reg)
-        MockSvc.return_value.decrypt_creds = MagicMock(return_value={"username": "u", "password": "p"})
+        MockSvc.return_value.decrypt_creds = MagicMock(
+            return_value={"username": "u", "password": "p"}
+        )
         with patch("app.api.routers.registries.get_adapter") as mock_get_adapter:
             mock_get_adapter.return_value.validate = MagicMock()
             resp = _client().post(

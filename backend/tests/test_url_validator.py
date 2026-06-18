@@ -1,6 +1,8 @@
 """Tests for SSRF-prevention URL validator."""
-import pytest
+
 from unittest.mock import patch
+
+import pytest
 
 from app.core.url_validator import validate_registry_url
 
@@ -75,6 +77,7 @@ def test_accepts_https_scheme():
 
 def test_blocks_dns_failure():
     import socket as _socket
+
     with patch("socket.getaddrinfo", side_effect=_socket.gaierror("NXDOMAIN")):
         with pytest.raises(ValueError, match="does not resolve"):
             validate_registry_url("nonexistent.invalid")

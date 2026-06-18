@@ -1,5 +1,5 @@
-from cryptography.fernet import Fernet
 import pytest
+from cryptography.fernet import Fernet
 
 from app.core.credentials import CredentialStore, LocalKEKProvider
 

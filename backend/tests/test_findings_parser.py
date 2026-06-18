@@ -1,5 +1,5 @@
-from app.workers.findings_parser import parse_findings, summarize_findings
 from app.models.finding import FindingStatus, Severity
+from app.workers.findings_parser import parse_findings, summarize_findings
 
 SCAN_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 
@@ -54,14 +54,22 @@ def test_severity_mapped_correctly():
 
 
 def test_unknown_severity_defaults_to_unknown():
-    results = [{
-        "Target": "test",
-        "Vulnerabilities": [
-            {"VulnerabilityID": "CVE-X", "PkgName": "pkg",
-             "InstalledVersion": "1.0", "FixedVersion": None,
-             "Severity": "WEIRD", "Title": None, "PrimaryURL": None}
-        ],
-    }]
+    results = [
+        {
+            "Target": "test",
+            "Vulnerabilities": [
+                {
+                    "VulnerabilityID": "CVE-X",
+                    "PkgName": "pkg",
+                    "InstalledVersion": "1.0",
+                    "FixedVersion": None,
+                    "Severity": "WEIRD",
+                    "Title": None,
+                    "PrimaryURL": None,
+                }
+            ],
+        }
+    ]
     findings = parse_findings(results, SCAN_ID)
     assert findings[0].severity == Severity.UNKNOWN
 

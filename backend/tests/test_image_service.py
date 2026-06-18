@@ -1,11 +1,11 @@
 import pytest
+from cryptography.fernet import Fernet
 
+from app.core.credentials import CredentialStore, LocalKEKProvider
 from app.models.image import ServiceType
 from app.models.registry import RegistryType
 from app.services.image_service import ImageService
 from app.services.registry_service import RegistryService
-from app.core.credentials import CredentialStore, LocalKEKProvider
-from cryptography.fernet import Fernet
 
 OWNER_ID = "00000000-0000-0000-0000-000000000001"
 TEAM_A = "00000000-0000-0000-0000-000000000020"
@@ -96,9 +96,7 @@ async def test_update_tag(db, image_svc, registry_id, test_user):
         gitlab_project_id="myorg/auth-service",
         gitlab_default_branch="main",
     )
-    updated = await image_svc.update(
-        db=db, image_id=str(img.id), team_id=TEAM_A, tag="1.0.1"
-    )
+    updated = await image_svc.update(db=db, image_id=str(img.id), team_id=TEAM_A, tag="1.0.1")
     assert updated is not None
     assert updated.tag == "1.0.1"
     assert updated.repository == "myorg/auth-service"  # unchanged

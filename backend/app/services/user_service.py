@@ -19,9 +19,7 @@ async def get_or_create_user(
     Called at scan-creation time so triggered_by is always a real users.id,
     preserving the audit trail FK.
     """
-    result = await db.execute(
-        select(User).where(User.keycloak_sub == keycloak_sub)
-    )
+    result = await db.execute(select(User).where(User.keycloak_sub == keycloak_sub))
     user = result.scalar_one_or_none()
     if user:
         return user.id
