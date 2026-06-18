@@ -10,3 +10,7 @@ node_modules/
 .mypy_cache/
 .ruff_cache/
 htmlcov/
+# Local documents (not part of the project)
+*.docx
+*.xlsx
+*.pdf
