@@ -15,6 +15,6 @@ spec:
     - type: redis
       metadata:
         # Redis list depth — scale up when queue > listLength items per current replica
-        address: {{ tpl .Values.config.redisUrl . | trimPrefix "redis://" }}
+        address: {{ include "patchpilot.redisUrl" . | trimPrefix "redis://" }}
         listName: celery
         listLength: {{ .Values.worker.keda.listLength | toString | quote }}

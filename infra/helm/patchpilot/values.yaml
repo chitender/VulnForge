@@ -1,9 +1,11 @@
 global:
   image:
     registry: ghcr.io
-    org: your-org      # replace with your GitHub org
+    org: your-org      # replace with your GitHub org/username
     tag: latest
     pullPolicy: IfNotPresent
+
+# ── PatchPilot services ──────────────────────────────────────────────────────
 
 backend:
   replicaCount: 2
@@ -14,23 +16,23 @@ backend:
     port: 8000
 
 worker:
-  concurrency: 2    # CPU cores per pod; scale pods via KEDA, not this value
+  concurrency: 2
   resources:
     requests:
       cpu: "1"
       memory: 512Mi
-      ephemeral-storage: 4Gi   # image layers pulled per scan
+      ephemeral-storage: 4Gi
     limits:
       cpu: "2"
       memory: 2Gi
       ephemeral-storage: 8Gi
   keda:
     minReplicas: 2
-    maxReplicas: 50    # 50 pods × 2 = 100 parallel scans (the stated SLO)
-    listLength: 2    # scale up when queue depth > 2 items/replica
+    maxReplicas: 50
+    listLength: 2
 
 trivyServer:
-  replicas: 2          # baseline; HPA scales further under load
+  replicas: 2
   hpa:
     enabled: true
     minReplicas: 2
@@ -48,20 +50,59 @@ ingress:
   tls: true
   tlsSecretName: patchpilot-tls
   annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # cert-manager.io/cluster-issuer: letsencrypt-prod
 
+# Keycloak realm / OIDC config
 config:
-  keycloakUrl: ""           # e.g. https://keycloak.example.com
   keycloakRealm: patchpilot
   keycloakClientId: patchpilot-backend
-  trivyServerUrl: "http://{{ .Release.Name }}-trivy-server:4954"
-  redisUrl: "redis://{{ .Release.Name }}-redis:6379/0"
 
-externalSecrets:
-  masterKey:
-    secretName: patchpilot-secrets
-    secretKey: master-key
-  databaseUrl:
-    secretName: patchpilot-secrets
-    secretKey: database-url
+# MASTER_KEY for envelope encryption — must be set at deploy time
+# Generate: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+masterKey: ""   # set via --set masterKey=<key> or values override
+
+# ── Bundled subchart: PostgreSQL (Bitnami) ───────────────────────────────────
+postgresql:
+  enabled: true
+  auth:
+    username: patchpilot
+    password: patchpilot
+    database: patchpilot
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      requests: { cpu: 250m, memory: 256Mi }
+      limits:   { cpu: 1,    memory: 512Mi }
+
+# ── Bundled subchart: Redis (Bitnami) ────────────────────────────────────────
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 2Gi
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits:   { cpu: 500m, memory: 256Mi }
+
+# ── Bundled subchart: Keycloak (Bitnami) ─────────────────────────────────────
+keycloak:
+  enabled: true
+  auth:
+    adminUser: admin
+    adminPassword: admin123   # change in prod
+  extraStartupArgs: "--import-realm"
+  extraVolumes:
+    - name: realm-config
+      configMap:
+        name: patchpilot-keycloak-realm
+  extraVolumeMounts:
+    - name: realm-config
+      mountPath: /opt/bitnami/keycloak/data/import
+  resources:
+    requests: { cpu: 500m, memory: 512Mi }
+    limits:   { cpu: 2,    memory: 1Gi }

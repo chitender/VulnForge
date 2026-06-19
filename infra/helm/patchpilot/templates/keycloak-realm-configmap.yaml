@@ -1,0 +1,47 @@
+{{- if .Values.keycloak.enabled }}
+# ConfigMap holding the Keycloak realm definition.
+# Mounted into the Keycloak pod at /opt/bitnami/keycloak/data/import
+# so it's imported on first start via --import-realm.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "patchpilot.fullname" . }}-keycloak-realm
+  labels: {{ include "patchpilot.labels" . | nindent 4 }}
+data:
+  realm-export.json: |
+    {
+      "realm": "patchpilot",
+      "enabled": true,
+      "clients": [
+        {
+          "clientId": "patchpilot-frontend",
+          "enabled": true,
+          "publicClient": true,
+          "redirectUris": ["*"],
+          "webOrigins": ["*"],
+          "standardFlowEnabled": true,
+          "attributes": { "pkce.code.challenge.method": "S256" }
+        },
+        {
+          "clientId": "patchpilot-backend",
+          "enabled": true,
+          "bearerOnly": true
+        }
+      ],
+      "roles": {
+        "realm": [
+          { "name": "admin" },
+          { "name": "editor" },
+          { "name": "viewer" }
+        ]
+      },
+      "users": [
+        {
+          "username": "admin",
+          "enabled": true,
+          "credentials": [{ "type": "password", "value": "admin123", "temporary": false }],
+          "realmRoles": ["admin"]
+        }
+      ]
+    }
+{{- end }}

@@ -1,6 +1,6 @@
 global:
   image:
-    tag: ""   # MUST be overridden at deploy time: helm upgrade --set global.image.tag=<sha>
+    tag: ""   # MUST override at deploy time: --set global.image.tag=<sha>
     pullPolicy: IfNotPresent
 
 backend:
@@ -25,3 +25,39 @@ frontend:
 ingress:
   host: patchpilot.example.com
   tls: true
+
+# Production: use managed services outside the chart for HA
+# Disable bundled subcharts and point to managed endpoints
+# postgresql:
+#   enabled: false
+# externalDatabaseUrl: "postgresql+psycopg2://user:pass@managed-pg-host/patchpilot"
+#
+# redis:
+#   enabled: false
+# externalRedisUrl: "redis://managed-redis-host:6379/0"
+#
+# keycloak:
+#   enabled: false
+# externalKeycloakUrl: "https://keycloak.example.com"
+
+postgresql:
+  auth:
+    password: ""   # MUST override: --set postgresql.auth.password=<strong-password>
+  primary:
+    persistence:
+      size: 20Gi
+    resources:
+      requests: { cpu: 500m, memory: 512Mi }
+      limits:   { cpu: 2,    memory: 2Gi }
+
+redis:
+  master:
+    persistence:
+      size: 4Gi
+
+keycloak:
+  auth:
+    adminPassword: ""   # MUST override: --set keycloak.auth.adminPassword=<strong-password>
+  resources:
+    requests: { cpu: 500m, memory: 512Mi }
+    limits:   { cpu: 2,    memory: 2Gi }

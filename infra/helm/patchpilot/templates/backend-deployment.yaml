@@ -27,13 +27,8 @@ spec:
             - name: MASTER_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.externalSecrets.masterKey.secretName }}
-                  key: {{ .Values.externalSecrets.masterKey.secretKey }}
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.externalSecrets.databaseUrl.secretName }}
-                  key: {{ .Values.externalSecrets.databaseUrl.secretKey }}
+                  name: {{ include "patchpilot.fullname" . }}-master-key
+                  key: master-key
           readinessProbe:
             httpGet:
               path: /healthz

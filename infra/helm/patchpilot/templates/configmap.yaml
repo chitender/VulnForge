@@ -4,8 +4,9 @@ metadata:
   name: {{ include "patchpilot.fullname" . }}-config
   labels: {{ include "patchpilot.labels" . | nindent 4 }}
 data:
-  KEYCLOAK_URL:       {{ .Values.config.keycloakUrl | quote }}
+  KEYCLOAK_URL:       {{ include "patchpilot.keycloakUrl" . | quote }}
   KEYCLOAK_REALM:     {{ .Values.config.keycloakRealm | quote }}
   KEYCLOAK_CLIENT_ID: {{ .Values.config.keycloakClientId | quote }}
-  TRIVY_SERVER_URL:   {{ tpl .Values.config.trivyServerUrl . | quote }}
-  REDIS_URL:          {{ tpl .Values.config.redisUrl . | quote }}
+  TRIVY_SERVER_URL:   {{ include "patchpilot.trivyServerUrl" . | quote }}
+  REDIS_URL:          {{ include "patchpilot.redisUrl" . | quote }}
+  DATABASE_URL:       {{ include "patchpilot.databaseUrlAsync" . | quote }}

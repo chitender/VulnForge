@@ -2,7 +2,7 @@ apiVersion: v2
 name: patchpilot
 description: Container vulnerability scanner with automated GitLab MR patching
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "0.1.0"
 keywords:
   - security
@@ -11,3 +11,19 @@ keywords:
   - gitlab
 maintainers:
   - name: PatchPilot Team
+
+dependencies:
+  - name: postgresql
+    version: "16.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+
+  - name: redis
+    version: "20.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+
+  - name: keycloak
+    version: "22.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: keycloak.enabled

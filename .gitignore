@@ -14,3 +14,5 @@ htmlcov/
 *.docx
 *.xlsx
 *.pdf
+# Helm subchart tarballs — regenerated via `helm dependency update`
+infra/helm/patchpilot/charts/
