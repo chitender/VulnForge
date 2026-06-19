@@ -35,7 +35,8 @@ Derived from bundled subchart when postgresql.enabled=true.
 */}}
 {{- define "patchpilot.databaseUrl" -}}
 {{- if .Values.postgresql.enabled -}}
-postgresql+psycopg2://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ .Release.Name }}-postgresql:5432/{{ .Values.postgresql.auth.database }}
+{{- $pgPass := required "postgresql.auth.password must be set (--set postgresql.auth.password=<strong-password>)" .Values.postgresql.auth.password -}}
+postgresql+psycopg2://{{ .Values.postgresql.auth.username }}:{{ $pgPass }}@{{ .Release.Name }}-postgresql:5432/{{ .Values.postgresql.auth.database }}
 {{- else -}}
 {{ required "Set externalDatabaseUrl when postgresql.enabled=false" .Values.externalDatabaseUrl }}
 {{- end }}

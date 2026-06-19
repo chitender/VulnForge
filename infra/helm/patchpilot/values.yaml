@@ -65,7 +65,7 @@ postgresql:
   enabled: true
   auth:
     username: patchpilot
-    password: patchpilot
+    password: ""      # REQUIRED — set via --set postgresql.auth.password=<strong-password>
     database: patchpilot
   primary:
     persistence:
@@ -94,7 +94,11 @@ keycloak:
   enabled: true
   auth:
     adminUser: admin
-    adminPassword: admin123   # change in prod
+    adminPassword: ""   # REQUIRED — set via --set keycloak.auth.adminPassword=<strong-password>
+  # Bootstrap admin account created in the patchpilot realm (temporary=true,
+  # operator must change password on first login).
+  # REQUIRED — set via --set keycloak.bootstrapAdminPassword=<password>
+  bootstrapAdminPassword: ""
   extraStartupArgs: "--import-realm"
   extraVolumes:
     - name: realm-config

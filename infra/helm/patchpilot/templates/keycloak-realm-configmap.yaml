@@ -1,7 +1,16 @@
 {{- if .Values.keycloak.enabled }}
+{{- $scheme := ternary "https" "http" .Values.ingress.tls }}
+{{- $host := required "ingress.host must be set" .Values.ingress.host }}
+{{- $origin := printf "%s://%s" $scheme $host }}
+{{- $bootstrapPassword := required "keycloak.bootstrapAdminPassword must be set (--set keycloak.bootstrapAdminPassword=<password>)" .Values.keycloak.bootstrapAdminPassword }}
 # ConfigMap holding the Keycloak realm definition.
 # Mounted into the Keycloak pod at /opt/bitnami/keycloak/data/import
-# so it's imported on first start via --import-realm.
+# and imported on first start via --import-realm.
+#
+# Security notes:
+# - redirectUris and webOrigins are scoped to ingress.host (no wildcards)
+# - bootstrap admin password is sourced from keycloak.bootstrapAdminPassword
+# - temporary: true forces a password change on first login
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -17,8 +26,8 @@ data:
           "clientId": "patchpilot-frontend",
           "enabled": true,
           "publicClient": true,
-          "redirectUris": ["*"],
-          "webOrigins": ["*"],
+          "redirectUris": ["{{ $origin }}/*"],
+          "webOrigins": ["{{ $origin }}"],
           "standardFlowEnabled": true,
           "attributes": { "pkce.code.challenge.method": "S256" }
         },
@@ -37,9 +46,13 @@ data:
       },
       "users": [
         {
-          "username": "admin",
+          "username": "patchpilot-admin",
           "enabled": true,
-          "credentials": [{ "type": "password", "value": "admin123", "temporary": false }],
+          "credentials": [{
+            "type": "password",
+            "value": {{ $bootstrapPassword | quote }},
+            "temporary": true
+          }],
           "realmRoles": ["admin"]
         }
       ]
